@@ -9,7 +9,6 @@
 
 extern "C" {
 #include "putty.h"
-}
 
 int agent_exists(void)
 {
@@ -23,4 +22,5 @@ int agent_query(void * /*in*/, int /*inlen*/, void **out, int *outlen,
     *out = NULL;
     *outlen = 0;
     return 1;
+}
 }

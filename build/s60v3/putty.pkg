@@ -21,13 +21,13 @@
 "installnote.txt"-"",FT,TC
 
 ; PuTTY UI application
-"..\..\..\epoc32\release\gcce\urel\putty.exe"-"!:\sys\bin\putty.exe"
-"..\..\..\epoc32\data\z\resource\apps\putty.rsc"-"!:\resource\apps\putty.rsc"
-"..\..\..\epoc32\data\z\private\10003a3f\apps\putty_reg.rsc"   -"!:\private\10003a3f\import\apps\putty_reg.rsc"
-"..\..\..\epoc32\data\z\resource\apps\putty_aif.mif"-"!:\resource\apps\putty_aif.mif"
+"$(EPOCROOT)epoc32\release\$(PLATFORM)\urel\putty.exe"-"!:\sys\bin\putty.exe"
+"$(EPOCROOT)epoc32\data\z\resource\apps\putty.rsc"-"!:\resource\apps\putty.rsc"
+"$(EPOCROOT)epoc32\data\z\private\10003a3f\apps\putty_reg.rsc"   -"!:\private\10003a3f\import\apps\putty_reg.rsc"
+"$(EPOCROOT)epoc32\data\z\resource\apps\putty_aif.mif"-"!:\resource\apps\putty_aif.mif"
 
 ; Putty engine
-"..\..\..\epoc32\release\gcce\urel\puttyengine.dll"-"!:\sys\bin\puttyengine.dll"
+"$(EPOCROOT)epoc32\release\$(PLATFORM)\urel\puttyengine.dll"-"!:\sys\bin\puttyengine.dll"
 
 ; Fonts
 "..\..\ui\s2font\fixed5x7.s2f"-"!:\resource\puttyfonts\fixed5x7.s2f"

@@ -617,6 +617,7 @@ int CPuttyEngineImp::putty_verify_ssh_host_key(
     return 0;
 }
 
+extern "C" {
 int verify_ssh_host_key(void *frontend, char *host, int port,
                          char *keytype, char *keystr, char *fingerprint,
                          void (*)(void *ctx, int result), void *) {
@@ -624,6 +625,7 @@ int verify_ssh_host_key(void *frontend, char *host, int port,
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     return engine->putty_verify_ssh_host_key(host, port, keytype, keystr,
                                              fingerprint);
+}
 }
 
 
@@ -646,14 +648,14 @@ int CPuttyEngineImp::putty_askcipher(const char *ciphername,
     return 0;
 }
 
-
+extern "C" {
 int askalg(void *frontend, const char *ciphertype, const char *ciphername,
 	   void (*)(void *ctx, int result), void *) {
     assert(frontend);
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     return engine->putty_askcipher(ciphername, ciphertype);
 }
-
+}
 
 void old_keyfile_warning(void)
 {
@@ -1080,10 +1082,12 @@ int char_width(Context /*ctx*/, int /*uc*/) {
     return 1;
 }
 
+extern "C" {
 int askappend(void * /*frontend*/, Filename /*filename*/,
               void (* /*callback*/)(void *ctx, int result), void * /*ctx*/) {
     // Always rewrite the log file
     return 2;
+}
 }
 
 void set_busy_status(void * /*frontend*/, int /*status*/) {

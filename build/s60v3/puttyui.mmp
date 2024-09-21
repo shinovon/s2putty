@@ -51,7 +51,11 @@ SOURCE		s2font\s2font.cpp
 
 USERINCLUDE	..\..\ui\s60v2 ..\..\ui\s60 ..\..\ui\common ..\..\ui\s2font
 USERINCLUDE	..\..\include ..\..\engine\putty ..\..\engine\puttysymbian
-SYSTEMINCLUDE	\epoc32\include \epoc32\include\libc
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\platform
+SYSTEMINCLUDE \epoc32\include\mw
+SYSTEMINCLUDE \epoc32\include\platform\mw
+SYSTEMINCLUDE \epoc32\include\libc
 SYSTEMINCLUDE	\epoc32\include\mmf\plugin  // mmfPluginInterfaceUIDs.hrh
 
 START RESOURCE	s60\putty.rss

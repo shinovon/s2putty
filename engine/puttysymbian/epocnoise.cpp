@@ -81,7 +81,7 @@ void epoc_noise_free(void) {
 }
 
 
-
+extern "C" {
 /*
  * This function is called once, at PuTTY startup. It is supposed to do all
  * kinds of heavy tricks to seed the random number generator.
@@ -150,7 +150,7 @@ void noise_get_heavy(void (*func) (void *, int))
     
     // Update the seed immediately, in case another instance uses it.
     random_save_seed();
-
+}
 }
 
 void random_save_seed(void)
@@ -168,6 +168,7 @@ void random_save_seed(void)
     }
 }
 
+extern "C" {
 /*
  * This function is called every time the random pool needs
  * stirring
@@ -217,6 +218,7 @@ void noise_get_light(void (*func) (void *, int))
     b = (TUint8) agent.GetState(KUidIrdaStatus);
     func(&b, sizeof(TUint8));
 #endif
+}
 }
 
 /*

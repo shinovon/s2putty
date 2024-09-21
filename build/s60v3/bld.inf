@@ -7,7 +7,7 @@
 //* See license.txt for full copyright and license information.
 
 PRJ_PLATFORMS 
-winscw gcce
+winscw gcce armv5
 
 PRJ_MMPFILES
 gnumakefile puttyicons.mk

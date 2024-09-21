@@ -93,7 +93,11 @@ SOURCE		puttysymbian\epocprinting.cpp
 SOURCE		puttysymbian\snprintf.c
 
 SYSTEMINCLUDE	..\..\engine\puttysymbian
-SYSTEMINCLUDE	\epoc32\include \epoc32\include\libc
+SYSTEMINCLUDE \epoc32\include
+SYSTEMINCLUDE \epoc32\include\platform
+SYSTEMINCLUDE \epoc32\include\mw
+SYSTEMINCLUDE \epoc32\include\platform\mw
+SYSTEMINCLUDE \epoc32\include\libc
 
 #if !defined(WINS) && !defined(EKA2)
 LIBRARY		edllstub.lib
