@@ -325,6 +325,15 @@ struct terminal_tag {
     int xterm_256_colour;
 };
 
+#ifdef __SYMBIAN32__
+/* [Petteri] In Symbian OS the codepage ends up using CS_whatever constants.
+   I believe the same is true for Unix too (since the Symbian Unicode code is
+   copied from the Unix port) but I don't dare to break it without being able
+   to test it myself. */
+#include "charset/charset.h"
+#define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CS_UTF8)
+#else
 #define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CP_UTF8)
+#endif
 
 #endif
