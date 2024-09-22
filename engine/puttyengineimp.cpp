@@ -814,8 +814,9 @@ int CPuttyEngineImp::putty_get_userpass_input(prompts_t *p) {
         TPtr16 promptDes = promptBuf->Des();
         StringToDes(pr->prompt, promptDes);
         
-        assert(pr->resultsize > 1);
-        HBufC *destBuf = HBufC::New(pr->resultsize-1);
+//        assert(pr->resultsize > 1);
+//        prompt_ensure_result_size(pr, 1);
+        HBufC *destBuf = HBufC::New(512);
         if ( !destBuf ) {
             iClient->FatalError(KOutOfMemory);
         }
@@ -824,7 +825,10 @@ int CPuttyEngineImp::putty_get_userpass_input(prompts_t *p) {
         TBool ok = iClient->AuthenticationPrompt(promptDes, destDes,
                                                  pr->echo ? EFalse : ETrue);
         if ( ok ) {
-            DesToString(destDes, pr->result);
+//            DesToString(destDes, pr->result);
+        	char *tmp = DesToString(destDes);
+        	prompt_set_result(pr, tmp);
+        	delete[] tmp;
         }
         
         delete destBuf;

@@ -56,5 +56,7 @@ void DeleteDes(TPtr *aDes);
 */
 void DesToString(const TDesC &aDes, char *aTarget);
 
+char *DesToString(const TDesC &aDes);
+
 
 #endif

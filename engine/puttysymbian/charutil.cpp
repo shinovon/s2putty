@@ -66,3 +66,15 @@ void DesToString(const TDesC &aDes, char *aTarget) {
     *aTarget = 0;
 }
 
+char *DesToString(const TDesC &aDes) {
+    int i = 0;
+    int len = aDes.Length();
+	char *target = new char[len + 1];
+    while ( i < len ) {
+        target[i] = (char) aDes[i];
+        i++;
+    }
+    target[i] = 0;
+    return target;
+}
+
