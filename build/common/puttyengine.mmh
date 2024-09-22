@@ -29,68 +29,13 @@ SOURCE		terminalkeys.cpp
 SOURCE		oneshottimer.cpp
 
 // PuTTY core source files
-SOURCE		putty\ssh.c
-SOURCE		putty\misc.c
-SOURCE		putty\version.c
-SOURCE		putty\settings.c
-SOURCE		putty\tree234.c
-SOURCE		putty\ldisc.c
-SOURCE		putty\sshcrc.c
-SOURCE		putty\sshdes.c
-SOURCE		putty\sshmd5.c
-SOURCE		putty\sshrsa.c
-SOURCE		putty\sshrand.c
-SOURCE		putty\sshsha.c
-SOURCE		putty\sshblowf.c
-SOURCE		putty\sshdh.c
-SOURCE		putty\sshcrcda.c
-SOURCE		putty\sshpubk.c
-SOURCE		putty\sshzlib.c
-SOURCE		putty\sshdss.c
-SOURCE		putty\x11fwd.c
-SOURCE		putty\portfwd.c
-SOURCE		putty\sshaes.c
-SOURCE		putty\sshsh512.c
-SOURCE		putty\sshbn.c
-SOURCE		putty\terminal.c
-SOURCE		putty\wcwidth.c
-SOURCE		putty\proxy.c
-SOURCE		putty\ldiscucs.c
-SOURCE		putty\pproxy.c
-SOURCE		putty\wildcard.c
-SOURCE		putty\logging.c
-SOURCE		putty\cproxy.c
-SOURCE		putty\minibidi.c
-SOURCE		putty\pinger.c
-SOURCE		putty\timing.c
-SOURCE		putty\time.c
-SOURCE		putty\ssharcf.c
-SOURCE		putty\sshsh256.c
+SOURCE		puttysymbian\epocnet.cpp puttysymbian\epocstore.cpp puttysymbian\charutil.cpp puttysymbian\assert.cpp puttysymbian\epocmemory.cpp puttysymbian\epocnoise.cpp puttysymbian\epocpageantc.cpp puttysymbian\epocunicode.cpp puttysymbian\epocmisc.cpp puttysymbian\epocprinting.cpp puttysymbian\snprintf.c putty\aqsync.c putty\callback.c putty\charset\fromucs.c putty\charset\localenc.c putty\charset\macenc.c putty\charset\mimeenc.c putty\charset\sbcs.c putty\charset\sbcsdat.c putty\charset\slookup.c putty\charset\toucs.c putty\charset\utf8.c putty\charset\xenc.c putty\cproxy.c putty\dialog.c putty\errsock.c putty\import.c putty\int64.c putty\ldisc.c putty\ldiscucs.c putty\logging.c putty\minibidi.c putty\misc.c putty\miscucs.c putty\nogss.c putty\noshare.c putty\pgssapi.c putty\pinger.c putty\portfwd.c putty\pproxy.c putty\proxy.c putty\raw.c  putty\ssh.c
+SOURCE		putty\sshaes.c putty\ssharcf.c putty\sshbcrypt.c putty\sshblowf.c putty\sshbn.c putty\sshccp.c putty\sshcrc.c putty\sshcrcda.c putty\sshdes.c putty\sshdh.c putty\sshdss.c putty\sshdssg.c putty\sshecc.c putty\sshecdsag.c putty\sshgssc.c putty\sshmd5.c putty\sshnogss.c putty\sshprime.c putty\sshpubk.c putty\sshrand.c putty\sshrsa.c putty\sshrsag.c putty\sshsh256.c putty\sshsh512.c putty\sshsha.c putty\sshshare.c putty\sshzlib.c putty\telnet.c putty\terminal.c putty\time.c putty\timing.c putty\tree234.c putty\version.c
+SOURCE		putty\wcwidth.c putty\wildcard.c putty\x11fwd.c
 
 // PuTTY charset library sources
-SOURCE		putty\charset\sbcsdat.c
-SOURCE		putty\charset\slookup.c
-SOURCE		putty\charset\sbcs.c
-SOURCE		putty\charset\utf8.c
-SOURCE		putty\charset\toucs.c
-SOURCE		putty\charset\fromucs.c
-SOURCE		putty\charset\xenc.c
-SOURCE		putty\charset\mimeenc.c
-SOURCE		putty\charset\macenc.c
-SOURCE		putty\charset\localenc.c
 
 // Putty Symbian OS specific sources
-SOURCE		puttysymbian\epocnet.cpp
-SOURCE		puttysymbian\epocstore.cpp
-SOURCE		puttysymbian\charutil.cpp
-SOURCE		puttysymbian\assert.cpp
-SOURCE		puttysymbian\epocmemory.cpp
-SOURCE		puttysymbian\epocnoise.cpp
-SOURCE		puttysymbian\epocpageantc.cpp
-SOURCE		puttysymbian\epocunicode.cpp
-SOURCE		puttysymbian\epocmisc.cpp
-SOURCE		puttysymbian\epocprinting.cpp
-SOURCE		puttysymbian\snprintf.c
 
 SYSTEMINCLUDE	..\..\engine\puttysymbian
 SYSTEMINCLUDE \epoc32\include
@@ -113,3 +58,8 @@ LIBRARY		random.lib
 MACRO		PUTTY_HAVE_SYSAGENT
 LIBRARY		sysagt.lib
 #endif
+
+MACRO NO_GSSAPI
+
+SOURCEPATH ..\..\engine\putty
+SOURCE conf.c settings.c be_misc.c

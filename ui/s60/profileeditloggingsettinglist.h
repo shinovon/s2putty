@@ -57,6 +57,7 @@ private: // Constructors
     
 private:
     TFileName iLogFile;
+    TInt iLogType;
     Config *iConfig;
 };
 

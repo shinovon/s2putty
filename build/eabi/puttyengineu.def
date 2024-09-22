@@ -10,4 +10,18 @@ EXPORTS
 	_ZTV7CRecver @ 9 NONAME ; DATA
 	_ZTV7CSender @ 10 NONAME ; DATA
 	_ZTV9CAcceptor @ 11 NONAME ; DATA
+	_ZTI13COneShotTimer @ 12 NONAME
+	_ZTV13COneShotTimer @ 13 NONAME
+	conf_get_filename @ 14 NONAME
+	conf_get_fontspec @ 15 NONAME
+	conf_get_int @ 16 NONAME
+	conf_get_int_int @ 17 NONAME
+	conf_get_str @ 18 NONAME
+	conf_set_filename @ 19 NONAME
+	conf_set_fontspec @ 20 NONAME
+	conf_set_int @ 21 NONAME
+	conf_set_int_int @ 22 NONAME
+	conf_set_str @ 23 NONAME
+	filename_from_str @ 24 NONAME
+	fontspec_new @ 25 NONAME
 

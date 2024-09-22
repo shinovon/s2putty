@@ -151,8 +151,12 @@ struct terminal_tag {
     int seen_disp_event;
     int big_cursor;
 
-    int xterm_mouse;		       /* send mouse messages to app */
+    int xterm_mouse;		       /* send mouse messages to host */
+    int xterm_extended_mouse;
+    int urxvt_extended_mouse;
     int mouse_is_down;		       /* used while tracking mouse buttons */
+
+    int bracketed_paste;
 
     int cset_attr[2];
 
@@ -168,7 +172,7 @@ struct terminal_tag {
 #define ARGS_MAX 32		       /* max # of esc sequence arguments */
 #define ARG_DEFAULT 0		       /* if an arg isn't specified */
 #define def(a,d) ( (a) == ARG_DEFAULT ? (d) : (a) )
-    int esc_args[ARGS_MAX];
+    unsigned esc_args[ARGS_MAX];
     int esc_nargs;
     int esc_query;
 #define ANSI(x,y)	((x)+((y)<<8))
@@ -218,8 +222,7 @@ struct terminal_tag {
     int attr_mask;
 
     wchar_t *paste_buffer;
-    int paste_len, paste_pos, paste_hold;
-    long last_paste;
+    int paste_len, paste_pos;
 
     void (*resize_fn)(void *, int, int);
     void *resize_ctx;
@@ -233,13 +236,13 @@ struct terminal_tag {
     struct unicode_data *ucsdata;
 
     /*
-     * We maintain a full _copy_ of a Config structure here, not
-     * merely a pointer to it. That way, when we're passed a new
-     * one for reconfiguration, we can check the differences and
-     * adjust the _current_ setting of (e.g.) auto wrap mode rather
-     * than only the default.
+     * We maintain a full copy of a Conf here, not merely a pointer
+     * to it. That way, when we're passed a new one for
+     * reconfiguration, we can check the differences and adjust the
+     * _current_ setting of (e.g.) auto wrap mode rather than only
+     * the default.
      */
-    Config cfg;
+    Conf *conf;
 
     /*
      * from_backend calls term_out, but it can also be called from
@@ -273,17 +276,55 @@ struct terminal_tag {
     int wcFromTo_size;
     struct bidi_cache_entry *pre_bidi_cache, *post_bidi_cache;
     int bidi_cache_size;
+
+    /*
+     * We copy a bunch of stuff out of the Conf structure into local
+     * fields in the Terminal structure, to avoid the repeated
+     * tree234 lookups which would be involved in fetching them from
+     * the former every time.
+     */
+    int ansi_colour;
+    char *answerback;
+    int answerbacklen;
+    int arabicshaping;
+    int beep;
+    int bellovl;
+    int bellovl_n;
+    int bellovl_s;
+    int bellovl_t;
+    int bidi;
+    int bksp_is_delete;
+    int blink_cur;
+    int blinktext;
+    int cjk_ambig_wide;
+    int conf_height;
+    int conf_width;
+    int crhaslf;
+    int erase_to_scrollback;
+    int funky_type;
+    int lfhascr;
+    int logflush;
+    int logtype;
+    int mouse_override;
+    int nethack_keypad;
+    int no_alt_screen;
+    int no_applic_c;
+    int no_applic_k;
+    int no_dbackspace;
+    int no_mouse_rep;
+    int no_remote_charset;
+    int no_remote_resize;
+    int no_remote_wintitle;
+    int no_remote_clearscroll;
+    int rawcnp;
+    int rect_select;
+    int remote_qtitle_action;
+    int rxvt_homeend;
+    int scroll_on_disp;
+    int scroll_on_key;
+    int xterm_256_colour;
 };
 
-#ifdef __SYMBIAN32__
-/* [Petteri] In Symbian OS the codepage ends up using CS_whatever constants.
-   I believe the same is true for Unix too (since the Symbian Unicode code is
-   copied from the Unix port) but I don't dare to break it without being able
-   to test it myself. */
-#include "charset/charset.h"
-#define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CS_UTF8)
-#else
 #define in_utf(term) ((term)->utf || (term)->ucsdata->line_codepage==CP_UTF8)
-#endif
 
 #endif

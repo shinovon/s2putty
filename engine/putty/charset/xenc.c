@@ -47,6 +47,7 @@ static const struct {
     { "koi8-u", CS_KOI8_U },
     { "ibm-cp437", CS_CP437 },
     { "ibm-cp850", CS_CP850 },
+    { "ibm-cp852", CS_CP852 },
     { "ibm-cp866", CS_CP866 },
     { "microsoft-cp1250", CS_CP1250 },
     { "microsoft-cp1251", CS_CP1251 },
@@ -82,7 +83,7 @@ int charset_from_xenc(const char *name)
 	p = name;
 	q = xencs[i].name;
 	while (*p || *q) {
-	    if (tolower(*p) != tolower(*q))
+		if (tolower((unsigned char)*p) != tolower((unsigned char)*q))
 		break;
 	    p++; q++;
 	}

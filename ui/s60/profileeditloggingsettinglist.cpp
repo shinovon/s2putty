@@ -56,11 +56,12 @@ CAknSettingItem *CProfileEditLoggingSettingList::CreateSettingItemL(
 
     switch ( aIdentifier ) {
         case EPuttySettingLoggingType:
+        	iLogType = conf_get_int(iConfig, CONF_logtype);
             return new (ELeave) CAknEnumeratedTextPopupSettingItem(
-                aIdentifier, iConfig->logtype);
+                aIdentifier, iLogType);
 
         case EPuttySettingLoggingFile:
-            StringToDes(iConfig->logfilename.path, iLogFile);
+            StringToDes(conf_get_filename(iConfig, CONF_logfilename)->path, iLogFile);
             return new (ELeave) CAknTextSettingItem(aIdentifier, iLogFile);
     }
 
@@ -82,8 +83,9 @@ void CProfileEditLoggingSettingList::EditItemL(TInt aIndex,
                        R_PUTTY_STR_LOGFILE_DIALOG_TITLE)),
                  *(CCoeEnv::Static()->AllocReadResourceLC(
                        R_PUTTY_STR_LOGFILE_PROMPT))) ) {
-            DesToString(iLogFile, iConfig->logfilename.path,
-                        sizeof(iConfig->logfilename.path));
+        	char *tmp = DesToString(iLogFile);
+        	conf_set_filename(iConfig, CONF_logfilename, filename_from_str(tmp));
+        	delete[] tmp;
             (*SettingItemArray())[aIndex]->LoadL();
             (*SettingItemArray())[aIndex]->UpdateListBoxTextL();
         }
@@ -98,6 +100,9 @@ void CProfileEditLoggingSettingList::EditItemL(TInt aIndex,
 
     // Store the change to PuTTY config if needed
     switch ( id ) {
+		case EPuttySettingLoggingType:
+			conf_set_int(iConfig, CONF_logtype, iLogType);
+			break;
         default:
             ;
     }

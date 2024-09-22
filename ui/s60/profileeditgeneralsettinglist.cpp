@@ -60,11 +60,11 @@ CAknSettingItem *CProfileEditGeneralSettingList::CreateSettingItemL(
             return new (ELeave) CAknTextSettingItem(aIdentifier, iProfileName);
             
         case EPuttySettingGeneralHost:
-            StringToDes(iConfig->host, iHost);
+            StringToDes(conf_get_str(iConfig, CONF_host), iHost);
             return new (ELeave) CAknTextSettingItem(aIdentifier, iHost);
             
         case EPuttySettingGeneralUsername:
-            StringToDes(iConfig->username, iUsername);
+            StringToDes(conf_get_str(iConfig, CONF_username), iUsername);
             return new (ELeave) CAknTextSettingItem(aIdentifier, iUsername);
     }
 
@@ -82,14 +82,18 @@ void CProfileEditGeneralSettingList::EditItemL(TInt aIndex,
 
     // Store the change to PuTTY config if needed
     switch ( (*SettingItemArray())[aIndex]->Identifier() ) {
-        case EPuttySettingGeneralHost:
-            DesToString(iHost, iConfig->host, sizeof(iConfig->host));
+        case EPuttySettingGeneralHost: {
+        	char* tmp = DesToString(iHost);
+        	conf_set_str(iConfig, CONF_host, tmp);
+        	delete[] tmp;
             break;
-            
-        case EPuttySettingGeneralUsername:
-            DesToString(iUsername, iConfig->username, sizeof(iConfig->username));
+        }
+        case EPuttySettingGeneralUsername: {
+        	char* tmp = DesToString(iUsername);
+        	conf_set_str(iConfig, CONF_username, tmp);
+            delete[] tmp;
             break;
-            
+        }
         default:
             ;
     }

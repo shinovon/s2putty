@@ -264,7 +264,7 @@ void CTerminalView::HandleCommandL(TInt aCommand) {
                     // put selection on clipboard
                     CClipboard* cb = CClipboard::NewForWritingLC(
                         CCoeEnv::Static()->FsSession());
-                    cb->StreamDictionary().At(KClipboardUidTypePlainText);    			 
+                    cb->StreamDictionary().At(KClipboardUidTypePlainText);
                     CPlainText *plainText = CPlainText::NewL();
                     CleanupStack::PushL(plainText);    			 
                     plainText->InsertL(0, *text);    				    			 
@@ -376,7 +376,7 @@ void CTerminalView::DoActivateL(const TVwsViewId &aPrevViewId,
 
     // Determine the font to use to begin with
     iFontDirectory = ((CPuttyAppUi*)AppUi())->FontDirectory();
-    HBufC *font = StringToBufLC(cfg->font.name);
+    HBufC *font = StringToBufLC(conf_get_fontspec(cfg, CONF_font)->name);
     iFontFile = iFontDirectory;
     iFontFile.Append(*font);
     iFontFile.Append(KFontExtension);
@@ -396,7 +396,7 @@ void CTerminalView::DoActivateL(const TVwsViewId &aPrevViewId,
     }
 
     // Check if we should be full-screen
-    iFullScreen = (cfg->width == KFullScreenWidth);
+    iFullScreen = (conf_get_int(cfg, CONF_width) == KFullScreenWidth);
 
     if ( !iContainer ) {
         TRect rect;
@@ -407,12 +407,12 @@ void CTerminalView::DoActivateL(const TVwsViewId &aPrevViewId,
         }
         iContainer = CTerminalContainer::NewL(rect, this, this, iFontFile);
         iContainer->SetMopParent(this);
-        iContainer->SetDefaultColors(TRgb(cfg->colours[0][0],
-                                          cfg->colours[0][1],
-                                          cfg->colours[0][2]),
-                                     TRgb(cfg->colours[2][0],
-                                          cfg->colours[2][1],
-                                          cfg->colours[2][2]));
+        iContainer->SetDefaultColors(TRgb(conf_get_int_int(cfg, CONF_colours, 0),
+										conf_get_int_int(cfg, CONF_colours, 1),
+										conf_get_int_int(cfg, CONF_colours, 2)),
+									TRgb(conf_get_int_int(cfg, CONF_colours, 6),
+										conf_get_int_int(cfg, CONF_colours, 7),
+										conf_get_int_int(cfg, CONF_colours, 8)));
         iContainer->ActivateL();
     }
 
@@ -426,7 +426,7 @@ void CTerminalView::DoActivateL(const TVwsViewId &aPrevViewId,
     titlePane->SetText(title); //takes ownership
 
     // Prompt for the host to connect to if not already set
-    if ( cfg->host[0] != 0 ) {
+    if ( conf_get_str(cfg, CONF_host)[0] != 0 ) {
         // Host name already set -- just connect.
         // Use a CIdle to kickstart connection setup. We could handle the
         // connection from here just fine, but CAknWaitDialog seems to have
@@ -435,16 +435,19 @@ void CTerminalView::DoActivateL(const TVwsViewId &aPrevViewId,
         iConnectIdle = CIdle::NewL(CActive::EPriorityIdle);
         iConnectIdle->Start(TCallBack(ConnectIdleCallback, this));
     } else {
-        HBufC *buf = HBufC::NewLC(sizeof(cfg->host));
+    	char *host = conf_get_str(cfg, CONF_host);
+        HBufC *buf = HBufC::NewLC(256);
         TPtr ptr = buf->Des();
-        StringToDes(cfg->host, ptr);
+        StringToDes(host, ptr);
         CAknTextQueryDialog *dlg = new (ELeave) CAknTextQueryDialog(ptr);
         dlg->SetPromptL(*(eikenv->AllocReadResourceLC(R_PUTTY_STR_HOST_PROMPT)));
         dlg->PrepareLC(R_PUTTY_STRING_QUERY_DIALOG);
-        dlg->SetMaxLength(sizeof(cfg->host));
+        dlg->SetMaxLength(256);
         if ( dlg->RunLD() ) {
             // Got a hostname -- store and connect
-            DesToString(ptr, cfg->host, sizeof(cfg->host));
+            host = DesToString(ptr);
+            conf_set_str(cfg, CONF_host, host);
+            delete[] host;
             iConnectIdle = CIdle::NewL(CActive::EPriorityIdle);
             iConnectIdle->Start(TCallBack(ConnectIdleCallback, this));
         } else {
@@ -621,7 +624,7 @@ void CTerminalView::HandleStatusPaneSizeChange() {
         delete iSendGrid;
         iSendGrid = NULL;
     }
-    if ( iContainer && (!iPutty->GetConfig()->resize_action) ) {
+    if ( iContainer && (!conf_get_int(iPutty->GetConfig(), CONF_resize_action)) ) {
         if ( iFullScreen ) {
             iContainer->SetRect(
                 CEikonEnv::Static()->EikAppUi()->ApplicationRect());
@@ -704,7 +707,8 @@ void CTerminalView::SetFontL() {
     box->Model()->SetOwnershipType(ELbmDoesNotOwnItemArray);
 
     // Find current font from the list if possible and set it as the default
-    HBufC *cur = StringToBufLC(cfg->font.name);
+    FontSpec *fs = conf_get_fontspec(cfg, CONF_font);
+    HBufC *cur = StringToBufLC(fs->name);
     if ( cur->Length() == 0 ) {
         CleanupStack::PopAndDestroy();
         cur = TPtrC(KDefaultFont).AllocLC();
@@ -723,9 +727,10 @@ void CTerminalView::SetFontL() {
         iFontFile = iFontDirectory;
         iFontFile.Append(fonts[box->CurrentItemIndex()]);
         iFontFile.Append(KFontExtension);
-        iContainer->SetFontL(iFontFile);                
-        DesToString(fonts[box->CurrentItemIndex()], cfg->font.name,
-                    sizeof(cfg->font.name));
+        iContainer->SetFontL(iFontFile);
+        char *tmp = DesToString(fonts[box->CurrentItemIndex()]);
+        conf_set_fontspec(cfg, CONF_font, fontspec_new(tmp));
+        delete[] tmp;
     }
     CleanupStack::PopAndDestroy(); // box
 }
@@ -759,8 +764,7 @@ void CTerminalView::SetPaletteL() {
     const CDesCArray &names = palettes->PaletteNames();
     box->Model()->SetItemTextArray((MDesC16Array*)&names);
     box->Model()->SetOwnershipType(ELbmDoesNotOwnItemArray);
-    box->SetCurrentItemIndex(palettes->IdentifyPalette(
-                                 (const unsigned char*) cfg->colours));
+    box->SetCurrentItemIndex(palettes->IdentifyPalette(cfg));
 
     // Run selection
     TInt ok = popup->ExecuteLD();
@@ -768,14 +772,13 @@ void CTerminalView::SetPaletteL() {
     if ( ok ) {
         // Set the palette to the engine and use it for container default
         // colors to make the background match
-        palettes->GetPalette(box->CurrentItemIndex(),
-                             (unsigned char*) cfg->colours);
-        iContainer->SetDefaultColors(TRgb(cfg->colours[0][0],
-                                          cfg->colours[0][1],
-                                          cfg->colours[0][2]),
-                                     TRgb(cfg->colours[2][0],
-                                          cfg->colours[2][1],
-                                          cfg->colours[2][2]));
+        palettes->GetPalette(box->CurrentItemIndex(), cfg);
+        iContainer->SetDefaultColors(TRgb(conf_get_int_int(cfg, CONF_colours, 0),
+										conf_get_int_int(cfg, CONF_colours, 1),
+										conf_get_int_int(cfg, CONF_colours, 2)),
+									TRgb(conf_get_int_int(cfg, CONF_colours, 6),
+										conf_get_int_int(cfg, CONF_colours, 7),
+										conf_get_int_int(cfg, CONF_colours, 8)));
         iPutty->ResetPalette();
         iPutty->RePaintWindow();
         iContainer->DrawDeferred();

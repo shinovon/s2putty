@@ -67,6 +67,9 @@ private:
     TInt iCipher;
     TBuf<5> iKeepaliveText;
     Config *iConfig;
+    TInt iPort;
+    TInt iSshProt;
+    TInt iPingInterval;
 };
 
 

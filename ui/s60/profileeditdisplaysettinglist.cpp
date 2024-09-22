@@ -68,7 +68,7 @@ CAknSettingItem *CProfileEditDisplaySettingList::CreateSettingItemL(
     switch ( aIdentifier ) {
         case EPuttySettingDisplayFont: {
             // Find the current font in the list
-            HBufC *cur = StringToBufLC(iConfig->font.name);
+            HBufC *cur = StringToBufLC(conf_get_fontspec(iConfig, CONF_font)->name);
             if ( iFonts.Find(*cur, iFontValue) != 0 ) {
                 // Not found, use default
                 if ( iFonts.Find(KDefaultFont, iFontValue) != 0 ) {
@@ -82,18 +82,17 @@ CAknSettingItem *CProfileEditDisplaySettingList::CreateSettingItemL(
         }
             
         case EPuttySettingDisplayBackSpace:
-            iBackSpace = iConfig->bksp_is_delete;
+            iBackSpace = conf_get_int(iConfig, CONF_bksp_is_delete);
             return new (ELeave) CAknBinaryPopupSettingItem(aIdentifier, 
                                                            iBackSpace);
 
         case EPuttySettingDisplayFullScreen:
-            iFullScreen = (iConfig->width == KFullScreenWidth);
+            iFullScreen = (conf_get_int(iConfig, CONF_width) == KFullScreenWidth);
             return new (ELeave) CAknBinaryPopupSettingItem(aIdentifier, 
                                                            iFullScreen);
 
         case EPuttySettingDisplayPalette:
-            iPaletteValue = iPalettes->IdentifyPalette(
-                (const unsigned char*) iConfig->colours);
+            iPaletteValue = iPalettes->IdentifyPalette(iConfig);
             return new (ELeave) CDynamicEnumTextSettingItem(
                 aIdentifier, iPalettes->PaletteNames(), iPaletteValue);
             break;            
@@ -103,7 +102,7 @@ CAknSettingItem *CProfileEditDisplaySettingList::CreateSettingItemL(
             iCharSets = iPutty.SupportedCharacterSetsL();
 
             // Find the current character set in the list
-            HBufC *cur = StringToBufLC(iConfig->line_codepage);
+            HBufC *cur = StringToBufLC(conf_get_str(iConfig, CONF_line_codepage));
             if ( iCharSets->Find(*cur, iCharSetValue) != 0 ) {
                 // Not found, use default
                 if ( iCharSets->Find(KDefaultCharSet, iCharSetValue) != 0 ) {
@@ -134,37 +133,30 @@ void CProfileEditDisplaySettingList::EditItemL(TInt aIndex,
     // Store the change to PuTTY config if needed
     switch ( id ) {
         case EPuttySettingDisplayFont: {
-            DesToString(iFonts[iFontValue], iConfig->font.name,
-                        sizeof(iConfig->font.name));
+        	char *tmp = DesToString(iFonts[iFontValue]);
+        	conf_set_fontspec(iConfig, CONF_font, fontspec_new(tmp));
+        	delete[] tmp;
             break;
         }
 
         case EPuttySettingDisplayBackSpace: {
-            if ( iBackSpace ) {
-                iConfig->bksp_is_delete = 1;
-            } else {
-                iConfig->bksp_is_delete = 0;
-            }
+            conf_set_int(iConfig, CONF_bksp_is_delete, iBackSpace ? 1 : 0);
             break;
         }
 
         case EPuttySettingDisplayFullScreen: {
-            if ( iFullScreen ) {
-                iConfig->width = KFullScreenWidth;
-            } else {
-                iConfig->width = 0;
-            }
+            conf_set_int(iConfig, CONF_width, iFullScreen ? KFullScreenWidth : 0);
             break;
         }
 
         case EPuttySettingDisplayPalette:
-            iPalettes->GetPalette(iPaletteValue,
-                                  (unsigned char*) iConfig->colours);
+            iPalettes->GetPalette(iPaletteValue, iConfig);
             break;
             
         case EPuttySettingDisplayCharSet: {
-            DesToString((*iCharSets)[iCharSetValue], iConfig->line_codepage,
-                        sizeof(iConfig->line_codepage));
+        	char *tmp = DesToString((*iCharSets)[iCharSetValue]);
+        	conf_set_str(iConfig, CONF_line_codepage, tmp);
+        	delete[] tmp;
             break;
         }
             

@@ -47,8 +47,8 @@ typedef unsigned short uint16;
 
 #define CMP(a, b)	(memcmp(a, b, SSH_BLOCKSIZE))
 
-const uchar ONE[4] = { 1, 0, 0, 0 };
-const uchar ZERO[4] = { 0, 0, 0, 0 };
+uchar ONE[4] = { 1, 0, 0, 0 };
+uchar ZERO[4] = { 0, 0, 0, 0 };
 
 struct crcda_ctx {
     uint16 *h;
@@ -73,7 +73,7 @@ void crcda_free_context(void *handle)
     }
 }
 
-static void crc_update(uint32 *a, const void *b)
+static void crc_update(uint32 *a, void *b)
 {
     *a = crc32_update(*a, b, 4);
 }

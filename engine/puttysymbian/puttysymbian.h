@@ -18,13 +18,15 @@
 
 
 struct Filename {
-    char path[FILENAME_MAX];
+    char *path;
 };
-#define f_open(filename, mode, isprivate) ( fopen((filename).path, (mode)) )
+#define f_open(filename, mode, isprivate) ( fopen((filename)->path, (mode)) )
 
 struct FontSpec {
-    char name[32];
+    char *name;
 };
+
+#define BUILDINFO_PLATFORM "Symbian"
 
 /*
  * Global variables. Most modules declare these `extern', but
@@ -41,7 +43,7 @@ struct FontSpec {
 
 #ifndef DONE_TYPEDEFS
 #define DONE_TYPEDEFS
-typedef struct config_tag Config;
+typedef struct conf_tag Config;
 typedef struct backend_tag Backend;
 typedef struct terminal_tag Terminal;
 #endif

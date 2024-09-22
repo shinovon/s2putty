@@ -35,13 +35,13 @@ extern "C" {
 #include "misc.h"
 }
 
-
+extern "C" {
 int is_dbcs_leadbyte(int /*codepage*/, char /*byte*/)
 {
     return 0;			       /* we don't do DBCS */
 }
 
-int mb_to_wc(int codepage, int /*flags*/, char *mbstr, int mblen,
+int mb_to_wc(int codepage, int /*flags*/, const char *mbstr, int mblen,
 	     wchar_t *wcstr, int wclen)
 {
     if ( (codepage == DEFAULT_CODEPAGE) || (codepage == CS_NONE) ) {
@@ -51,8 +51,8 @@ int mb_to_wc(int codepage, int /*flags*/, char *mbstr, int mblen,
                               NULL, NULL, 0);
 }
 
-int wc_to_mb(int codepage, int /*flags*/, wchar_t *wcstr, int wclen,
-	     char *mbstr, int mblen, char *defchr, int *defused,
+int wc_to_mb(int codepage, int /*flags*/, const wchar_t *wcstr, int wclen,
+	     char *mbstr, int mblen, const char *defchr, int *defused,
 	     struct unicode_data * /*ucsdata*/)
 {
     /* FIXME: we should remove the defused param completely... */
@@ -94,7 +94,8 @@ int init_ucs(struct unicode_data *ucsdata, char *linecharset, int vtmode)
      * in the line codepage into Unicode.
      */
     for (i = 0; i < 256; i++) {
-	char c[1], *p;
+	char c[1];
+	const char *p;
 	wchar_t wc[1];
 	int len;
 	c[0] = (char)i;
@@ -146,7 +147,8 @@ int init_ucs(struct unicode_data *ucsdata, char *linecharset, int vtmode)
      * simply CP437.
      */
     for (i = 0; i < 256; i++) {
-	char c[1], *p;
+	char c[1];
+	const char *p;
 	wchar_t wc[1];
 	int len;
 	c[0] = (char)i;
@@ -198,4 +200,5 @@ int decode_codepage(char *cp_name)
     if (!*cp_name)
 	return CS_NONE;		       /* use font encoding */
     return charset_from_localenc(cp_name);
+}
 }

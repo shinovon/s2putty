@@ -320,6 +320,7 @@ static void open_settings_w_L(TSettingsWriteState* state,
 }
 
 
+extern "C" {
 void *open_settings_w(const char *sessionname, char **errmsg) {
     
     TSettingsWriteState *state = snew(TSettingsWriteState);
@@ -335,6 +336,7 @@ void *open_settings_w(const char *sessionname, char **errmsg) {
     }
     return (void*) state;
 }
+}
 
 
 static void write_settings_s_L(TSettingsWriteState *state, const char *key,
@@ -349,12 +351,14 @@ static void write_settings_s_L(TSettingsWriteState *state, const char *key,
     CleanupStack::PopAndDestroy();
 }
 
+extern "C" {
 void write_setting_s(void *handle, const char *key, const char *value) {
     TSettingsWriteState *state = (TSettingsWriteState*) handle;
     TRAPD(error, write_settings_s_L(state, key, value));
     if ( error != KErrNone ) {
         fatalbox("write_setting_s: error %d", error);
     }
+}
 }
 
 
@@ -370,12 +374,14 @@ static void write_settings_i_L(TSettingsWriteState *state, const char *key,
     CleanupStack::PopAndDestroy();
 }
 
+extern "C" {
 void write_setting_i(void *handle, const char *key, int value) {    
     TSettingsWriteState *state = (TSettingsWriteState*) handle;
     TRAPD(error, write_settings_i_L(state, key, value));
     if ( error != KErrNone ) {
         fatalbox("write_setting_s: error %d", error);
     }
+}
 }
 
 
@@ -449,7 +455,7 @@ static void open_settings_r_L(TSettingsReadState *state,
     CleanupStack::PopAndDestroy(2); // reader, buf
 }
     
-
+extern "C" {
 
 void *open_settings_r(const char *sessionname) {
 
@@ -475,7 +481,7 @@ void *open_settings_r(const char *sessionname) {
 }
 
 
-char *read_setting_s(void *handle, const char *key, char *buffer, int buflen) {
+char *read_setting_s(void *handle, const char *key) {
 
     if ( handle == NULL ) {
         return NULL;
@@ -491,9 +497,7 @@ char *read_setting_s(void *handle, const char *key, char *buffer, int buflen) {
 
     // Copy data to the target buffer and return it
     TInt len = s->iValue->Length();
-    if ( buflen < (len+1) ) {
-        return NULL;
-    }
+    char* buffer = snewn(len + 1, char);
     Mem::Copy(buffer, s->iValue->Ptr(), len);
     buffer[len] = 0;
     return buffer;
@@ -524,29 +528,39 @@ int read_setting_i(void *handle, const char *key, int defvalue) {
     return val;
 }
 
+extern FontSpec *fontspec_new(const char *);
+extern Filename *filename_from_str(const char *);
 
-int read_setting_fontspec(void *handle, const char *name, FontSpec *result)
+FontSpec *read_setting_fontspec(void *handle, const char *name)
 {
-    FontSpec ret;    
-    if (!read_setting_s(handle, name, ret.name, sizeof(ret.name)))
-	return 0;
-    *result = ret;
-    return 1;
+    char *tmp;
+    if ((tmp = read_setting_s(handle, name)) != NULL) {
+        FontSpec *ret = fontspec_new(tmp);
+        sfree(tmp);
+        return ret;
+    }
+    return NULL;
 }
 
-void write_setting_fontspec(void *handle, const char *name, FontSpec font)
+void write_setting_fontspec(void *handle, const char *name, FontSpec *font)
 {
-    write_setting_s(handle, name, font.name);
+    write_setting_s(handle, name, font->name);
 }
 
-int read_setting_filename(void *handle, const char *name, Filename *result)
+Filename *read_setting_filename(void *handle, const char *name)
 {
-    return !!read_setting_s(handle, name, result->path, sizeof(result->path));
+    char *tmp;
+    if ((tmp = read_setting_s(handle, name)) != NULL) {
+        Filename *ret = filename_from_str(tmp);
+        sfree(tmp);
+        return ret;
+    }
+    return NULL;
 }
 
-void write_setting_filename(void *handle, const char *name, Filename result)
+void write_setting_filename(void *handle, const char *name, Filename *result)
 {
-    write_setting_s(handle, name, result.path);
+    write_setting_s(handle, name, result->path);
 }
 
 
@@ -562,7 +576,7 @@ void close_settings_r(void *handle) {
     }
     sfree(state);
 }
-
+}
 
 static void FreeSettingsTree(tree234 *aSettings) {
     TInt i;
@@ -577,15 +591,17 @@ static void FreeSettingsTree(tree234 *aSettings) {
     freetree234(aSettings);
 }
 
-
+extern "C" {
 void del_settings(const char * /*sessionname*/)
 {
+}
 }
 
 struct enumsettings {
     int i;
 };
 
+extern "C" {
 void *enum_settings_start(void)
 {
 	return NULL;
@@ -599,6 +615,7 @@ char *enum_settings_next(void * /*handle*/, char * /*buffer*/, int /*buflen*/)
 
 void enum_settings_finish(void * /*handle*/)
 {
+}
 }
 
 

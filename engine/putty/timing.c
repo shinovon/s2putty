@@ -7,6 +7,24 @@
  * changes; and, very importantly, it tracks the context pointers
  * passed to schedule_timer(), so that if a context is freed all
  * the timers associated with it can be immediately annulled.
+ *
+ *
+ * The problem is that computer clocks aren't perfectly accurate.
+ * The GETTICKCOUNT function returns a 32bit number that normally
+ * increases by about 1000 every second. On windows this uses the PC's
+ * interrupt timer and so is only accurate to around 20ppm.  On unix it's
+ * a value that's calculated from the current UTC time and so is in theory
+ * accurate in the long term but may jitter and jump in the short term.
+ *
+ * What PuTTY needs from these timers is simply a way of delaying the
+ * calling of a function for a little while, if it's occasionally called a
+ * little early or late that's not a problem. So to protect against clock
+ * jumps schedule_timer records the time that it was called in the timer
+ * structure. With this information the run_timers function can see when
+ * the current GETTICKCOUNT value is after the time the event should be
+ * fired OR before the time it was set. In the latter case the clock must
+ * have jumped, the former is (probably) just the normal passage of time.
+ *
  */
 
 #include <assert.h>
@@ -18,8 +36,13 @@
 struct timer {
     timer_fn_t fn;
     void *ctx;
-    long now;
+    unsigned long now;
+    unsigned long when_set;
 };
+
+static tree234 *timers = NULL;
+static tree234 *timer_contexts = NULL;
+static unsigned long now = 0L;
 
 static int compare_timers(void *av, void *bv)
 {
@@ -37,14 +60,12 @@ static int compare_timers(void *av, void *bv)
      * Failing that, compare on the other two fields, just so that
      * we don't get unwanted equality.
      */
-#ifdef __LCC__
+#if defined(__LCC__) || defined(__clang__)
     /* lcc won't let us compare function pointers. Legal, but annoying. */
     {
 	int c = memcmp(&a->fn, &b->fn, sizeof(a->fn));
-	if (c < 0)
-	    return -1;
-	else if (c > 0)
-	    return +1;
+	if (c)
+	    return c;
     }
 #else    
     if (a->fn < b->fn)
@@ -78,42 +99,44 @@ static int compare_timer_contexts(void *av, void *bv)
 
 static void init_timers(void)
 {
-    if (!statics()->timers) {
-	statics()->timers = newtree234(compare_timers);
-	statics()->timer_contexts = newtree234(compare_timer_contexts);
-	statics()->now = GETTICKCOUNT();
+    if (!timers) {
+	timers = newtree234(compare_timers);
+	timer_contexts = newtree234(compare_timer_contexts);
+	now = GETTICKCOUNT();
     }
 }
 
-long schedule_timer(int ticks, timer_fn_t fn, void *ctx)
+unsigned long schedule_timer(int ticks, timer_fn_t fn, void *ctx)
 {
-    long when;
+    unsigned long when;
     struct timer *t, *first;
 
     init_timers();
 
-    when = ticks + GETTICKCOUNT();
+    now = GETTICKCOUNT();
+    when = ticks + now;
 
     /*
      * Just in case our various defences against timing skew fail
      * us: if we try to schedule a timer that's already in the
      * past, we instead schedule it for the immediate future.
      */
-    if (when - statics()->now <= 0)
-	when = statics()->now + 1;
+    if (when - now <= 0)
+	when = now + 1;
 
     t = snew(struct timer);
     t->fn = fn;
     t->ctx = ctx;
     t->now = when;
+    t->when_set = now;
 
-    if (t != add234(statics()->timers, t)) {
+    if (t != add234(timers, t)) {
 	sfree(t);		       /* identical timer already exists */
     } else {
-	add234(statics()->timer_contexts, t->ctx);/* don't care if this fails */
+	add234(timer_contexts, t->ctx);/* don't care if this fails */
     }
 
-    first = (struct timer *)index234(statics()->timers, 0);
+    first = (struct timer *)index234(timers, 0);
     if (first == t) {
 	/*
 	 * This timer is the very first on the list, so we must
@@ -125,90 +148,50 @@ long schedule_timer(int ticks, timer_fn_t fn, void *ctx)
     return when;
 }
 
+unsigned long timing_last_clock(void)
+{
+    /*
+     * Return the last value we stored in 'now'. In particular,
+     * calling this just after schedule_timer returns the value of
+     * 'now' that was used to decide when the timer you just set would
+     * go off.
+     */
+    return now;
+}
+
 /*
  * Call to run any timers whose time has reached the present.
  * Returns the time (in ticks) expected until the next timer after
  * that triggers.
  */
-int run_timers(long anow, long *next)
+int run_timers(unsigned long anow, unsigned long *next)
 {
     struct timer *first;
 
     init_timers();
 
-#ifdef TIMING_SYNC
-    /*
-     * In this ifdef I put some code which deals with the
-     * possibility that `anow' disagrees with GETTICKCOUNT by a
-     * significant margin. Our strategy for dealing with it differs
-     * depending on platform, because on some platforms
-     * GETTICKCOUNT is more likely to be right whereas on others
-     * `anow' is a better gold standard.
-     */
-    {
-	long tnow = GETTICKCOUNT();
-
-	if (tnow + TICKSPERSEC/50 - anow < 0 ||
-	    anow + TICKSPERSEC/50 - tnow < 0
-	    ) {
-#if defined TIMING_SYNC_ANOW
-	    /*
-	     * If anow is accurate and the tick count is wrong,
-	     * this is likely to be because the tick count is
-	     * derived from the system clock which has changed (as
-	     * can occur on Unix). Therefore, we resolve this by
-	     * inventing an offset which is used to adjust all
-	     * future output from GETTICKCOUNT.
-	     * 
-	     * A platform which defines TIMING_SYNC_ANOW is
-	     * expected to have also defined this offset variable
-	     * in (its platform-specific adjunct to) putty.h.
-	     * Therefore we can simply reference it here and assume
-	     * that it will exist.
-	     */
-	    tickcount_offset += anow - tnow;
-#elif defined TIMING_SYNC_TICKCOUNT
-	    /*
-	     * If the tick count is more likely to be accurate, we
-	     * simply use that as our time value, which may mean we
-	     * run no timers in this call (because we got called
-	     * early), or alternatively it may mean we run lots of
-	     * timers in a hurry because we were called late.
-	     */
-	    anow = tnow;
-#else
-/*
- * Any platform which defines TIMING_SYNC must also define one of the two
- * auxiliary symbols TIMING_SYNC_ANOW and TIMING_SYNC_TICKCOUNT, to
- * indicate which measurement to trust when the two disagree.
- */
-#error TIMING_SYNC definition incomplete
-#endif
-	}
-    }
-#endif
-
-    statics()->now = anow;
+    now = GETTICKCOUNT();
 
     while (1) {
-	first = (struct timer *)index234(statics()->timers, 0);
+	first = (struct timer *)index234(timers, 0);
 
 	if (!first)
 	    return FALSE;	       /* no timers remaining */
 
-	if (find234(statics()->timer_contexts, first->ctx, NULL) == NULL) {
+	if (find234(timer_contexts, first->ctx, NULL) == NULL) {
 	    /*
 	     * This timer belongs to a context that has been
 	     * expired. Delete it without running.
 	     */
-	    delpos234(statics()->timers, 0);
+	    delpos234(timers, 0);
 	    sfree(first);
-	} else if (first->now - statics()->now <= 0) {
+	} else if (now - (first->when_set - 10) >
+		   first->now - (first->when_set - 10)) {
 	    /*
 	     * This timer is active and has reached its running
 	     * time. Run it.
 	     */
-	    delpos234(statics()->timers, 0);
+	    delpos234(timers, 0);
 	    first->fn(first->ctx, first->now);
 	    sfree(first);
 	} else {
@@ -235,7 +218,7 @@ void expire_timer_context(void *ctx)
      * ever actually got scheduled for it) then that's fine and we
      * simply don't need to do anything.
      */
-    del234(statics()->timer_contexts, ctx);
+    del234(timer_contexts, ctx);
 }
 
 /*

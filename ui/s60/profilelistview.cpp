@@ -115,8 +115,9 @@ void CProfileListView::HandleCommandL(TInt aCommand) {
                 // UI-specific
                 iPutty->SetDefaults();
                 Config *cfg = iPutty->GetConfig();
-                DesToString(KDefaultFont, cfg->font.name,
-                            sizeof(cfg->font.name));
+                char *tmp = DesToString(KDefaultFont);
+                conf_set_fontspec(cfg, CONF_font, fontspec_new(tmp));
+                delete[] tmp;
                 iProfileEditName = KNewProfileName;
                 MakeNameUniqueL(iProfileEditName);
                 iPutty->WriteConfigFileL(

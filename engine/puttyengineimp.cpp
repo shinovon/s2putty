@@ -19,9 +19,19 @@
 #include "epocstore.h"
 #include "terminalkeys.h"
 #include "oneshottimer.h"
+#include "oneshottimer.h"
 extern "C" {
 #include "storage.h"
 #include "ssh.h"
+
+//const char *const appname = "PuTTY";
+//const int be_default_protocol = PROT_SSH;
+//const int platform_uses_x11_unix_by_default = FALSE;
+
+const Backend *backends[] = {
+    &ssh_backend,
+    NULL
+};
 }
 
 
@@ -38,11 +48,6 @@ static const unsigned char KDefaultColors[KConfigColors][3] = {
     { 0,187,0 }, { 85,255,85 }, { 187,187,0 }, { 255,255,85 }, { 0,0,187 },
     { 85,85,255 }, { 187,0,187 }, { 255,85,255 }, { 0,187,187 },
     { 85,255,255 }, { 187,187,187 }, { 192,192,192 }
-};
-
-const struct backend_list backends[] = {
-    {PROT_SSH, "ssh", &ssh_backend},
-    {0, NULL}
 };
 
 static const int KDefaultCiphers[CIPHER_MAX] = {
@@ -82,6 +87,7 @@ CPuttyEngineImp::CPuttyEngineImp() {
 
 void CPuttyEngineImp::ConstructL(MPuttyClient *aClient,
                                  const TDesC &aDataPath) {
+    ilog("+CPuttyEngineImp::ConstructL()");
     // Initialize Symbian OS statics
     SymbianStatics *sstats =
         (SymbianStatics*) User::AllocL(sizeof(SymbianStatics));
@@ -99,30 +105,37 @@ void CPuttyEngineImp::ConstructL(MPuttyClient *aClient,
     epoc_memory_init();
     epoc_store_init(aDataPath);
     epoc_noise_init();
+    
+    iConfig = conf_new();
 
     SetDefaults();
 
     iState = EStateInitialized;
     
     CActiveScheduler::Add(this);
+    ilog("-CPuttyEngineImp::ConstructL()");
 }
 
 
 // Destruction
 CPuttyEngineImp::~CPuttyEngineImp() {
-    
+
+    ilog("+CPuttyEngineImp::~()");
     if ( (iState == EStateConnected) || (iState == EStateDisconnected) ) {
         Disconnect();
     } else {
         assert(iState == EStateInitialized);
     }
+    ilog("1");
 
     // Save random number generator seed. The Symbian OS implementation won't
     // actually save it unless the generator has been seeded properly, so this
     // can be called unconditionally.
     random_save_seed();
+    
+    conf_free(iConfig);
 
-    sfree(iTextBuf);
+//    sfree(iTextBuf);
     
     // Uninitialize Symbian stuff
     epoc_noise_free();
@@ -147,12 +160,13 @@ CPuttyEngineImp::~CPuttyEngineImp() {
     remove_statics_tls();
 
     delete[] iConnError;
+    ilog("-PuttyEngineImp::~()");
 }
 
 
 // MPuttyEngine::GetConfig()
 Config *CPuttyEngineImp::GetConfig() {
-    return &iConfig;
+    return iConfig;
 }
 
 
@@ -162,19 +176,19 @@ TInt CPuttyEngineImp::Connect(RSocketServ &aSocketServ,
     assert(iState == EStateInitialized);
 
     // Initialize logging
-    iLogContext = log_init(this, &iConfig);
+    iLogContext = log_init(this, iConfig);
 
     ResetPalette();
 
     // Initialize charset conversion tables
-    init_ucs(&iUnicodeData, iConfig.line_codepage, iConfig.vtmode);
+    init_ucs(&iUnicodeData, conf_get_str(iConfig, CONF_line_codepage), conf_get_int(iConfig, CONF_vtmode));
 
     // Select the protocol to use
     iBackend = NULL;
     iBackendHandle = NULL;
-    for ( TInt i = 0; backends[i].backend != NULL; i++ ) {
-        if ( backends[i].protocol == iConfig.protocol ) {
-            iBackend = backends[i].backend;
+    for ( TInt i = 0; backends[i] != NULL; i++ ) {
+        if ( backends[i]->protocol == conf_get_int(iConfig, CONF_protocol)) {
+            iBackend = backends[i];
             break;
         }
     }
@@ -193,10 +207,12 @@ TInt CPuttyEngineImp::Connect(RSocketServ &aSocketServ,
     char *realhost = NULL;
     delete [] iConnError;
     iConnError = NULL;
-    const char *err = iBackend->init(this, &iBackendHandle, &iConfig,
-                                     iConfig.host, iConfig.port, &realhost,
-                                     iConfig.tcp_nodelay,
-                                     iConfig.tcp_keepalives);
+    const char *err = iBackend->init(this, &iBackendHandle, iConfig,
+                                     conf_get_str(iConfig, CONF_host),
+                                     conf_get_int(iConfig, CONF_port),
+                                     &realhost,
+                                     conf_get_int(iConfig, CONF_tcp_nodelay),
+                                     conf_get_int(iConfig, CONF_tcp_keepalives));
     if ( err ) {
         if ( iBackendHandle ) {
             iBackend->free(iBackendHandle);
@@ -223,15 +239,15 @@ TInt CPuttyEngineImp::Connect(RSocketServ &aSocketServ,
     iBackend->provide_logctx(iBackendHandle, iLogContext);
 
     // Initialize terminal
-    iTerminal = term_init(&iConfig, &iUnicodeData, this);
+    iTerminal = term_init(iConfig, &iUnicodeData, this);
     term_provide_logctx(iTerminal, iLogContext);
-    term_size(iTerminal, iTermHeight, iTermWidth, iConfig.savelines);
+    term_size(iTerminal, iTermHeight, iTermWidth, conf_get_int(iConfig, CONF_savelines));
 
     // Connect the terminal to the backend for resize purposes.
     term_provide_resize_fn(iTerminal, iBackend->size, iBackendHandle);
 
     // Set up a line discipline.
-    iLineDisc = ldisc_create(&iConfig, iTerminal, iBackend, iBackendHandle,
+    iLineDisc = ldisc_create(iConfig, iTerminal, iBackend, iBackendHandle,
                              this);
 
     iState = EStateConnected;
@@ -287,7 +303,7 @@ void CPuttyEngineImp::SetTerminalSize(TInt aWidth, TInt aHeight) {
     assert((iTermWidth > 1) && (iTermHeight > 1));
 
     if ( iState == EStateConnected ) {
-        term_size(iTerminal, iTermHeight, iTermWidth, iConfig.savelines);
+        term_size(iTerminal, iTermHeight, iTermWidth, conf_get_int(iConfig, CONF_savelines));
     }
 }
 
@@ -317,7 +333,7 @@ void CPuttyEngineImp::SendKeypress(TKeyCode aCode, TUint aModifiers) {
     term_nopaste(iTerminal);
 
     // Try to translate as a control character
-    int xbytes = TranslateKey(&iConfig, iTerminal, aCode, aModifiers, buf);
+    int xbytes = TranslateKey(iConfig, iTerminal, aCode, aModifiers, buf);
     assert(xbytes < 16);
     if ( xbytes > 0 ) {
         // Send control key codes as is
@@ -345,7 +361,7 @@ void CPuttyEngineImp::ReadConfigFileL(const TDesC &aFile) {
     assert(iState != EStateNone);
     char *name = new (ELeave) char[aFile.Length()+1];
     DesToString(aFile, name);
-    do_defaults(name, &iConfig);
+    do_defaults(name, iConfig);
     delete [] name;
 }
 
@@ -355,31 +371,34 @@ void CPuttyEngineImp::WriteConfigFileL(const TDesC &aFile) {
     assert(iState != EStateNone);
     char *name = new (ELeave) char[aFile.Length()+1];
     DesToString(aFile, name);
-    save_settings(name, &iConfig);
+    save_settings(name, iConfig);
     delete [] name;
 }
 
 
 // MPuttyEngine::SetDefaults
 void CPuttyEngineImp::SetDefaults() {
-    
+    ilog("+CPuttyEngineImp::SetDefaults()");
     statics()->flags = FLAG_INTERACTIVE;
     statics()->default_protocol = PROT_SSH;
     statics()->default_port = 22;    
-    do_defaults(NULL, &iConfig);
-    statics()->default_protocol = iConfig.protocol;
-    statics()->default_port = iConfig.port;
-    strcpy(iConfig.line_codepage, "ISO-8859-15");
-    iConfig.vtmode = VT_UNICODE;
-    iConfig.sshprot = 2;
-    iConfig.compression = 1;
+    do_defaults(NULL, iConfig);
+    statics()->default_protocol = conf_get_int(iConfig, CONF_protocol);
+    statics()->default_port = conf_get_int(iConfig, CONF_port);
+    conf_set_str(iConfig, CONF_line_codepage, "ISO-8859-15");
+    conf_set_int(iConfig, CONF_vtmode, VT_UNICODE);
+    conf_set_int(iConfig, CONF_sshprot, 2);
+    conf_set_int(iConfig, CONF_compression, 1);
     for ( TInt i = 0; i < KConfigColors; i++ ) {
-        iConfig.colours[i][0] = KDefaultColors[i][0];
-        iConfig.colours[i][1] = KDefaultColors[i][1];
-        iConfig.colours[i][2] = KDefaultColors[i][2];
+    	conf_set_int_int(iConfig, CONF_colours, i*3+0, KDefaultColors[i][0]);
+    	conf_set_int_int(iConfig, CONF_colours, i*3+1, KDefaultColors[i][1]);
+    	conf_set_int_int(iConfig, CONF_colours, i*3+2, KDefaultColors[i][2]);
     }
-    strcpy(iConfig.logfilename.path, "c:\\putty.log");
-    Mem::Copy(iConfig.ssh_cipherlist, KDefaultCiphers, sizeof(int)*CIPHER_MAX);
+    conf_set_filename(iConfig, CONF_logfilename, filename_from_str("c:\\putty.log"));
+    for (int i = 0; i < CIPHER_MAX; ++i) {
+    	conf_set_int_int(iConfig, CONF_ssh_cipherlist, i, KDefaultCiphers[i]);
+    }
+    ilog("-CPuttyEngineImp::SetDefaults()");
 }
 
 
@@ -401,7 +420,8 @@ CDesCArray *CPuttyEngineImp::SupportedCharacterSetsL() {
 
 // MPuttyEngine::ResetPalette
 void CPuttyEngineImp::ResetPalette() {
-    
+
+    ilog("+CPuttyEngineImp::ResetPalette()");
     // Convert palette from the config to our internal palette
     static const int paletteMap[22] = {
 	256, 257, 258, 259, 260, 261,
@@ -411,9 +431,9 @@ void CPuttyEngineImp::ResetPalette() {
     TInt c;
     for ( c = 0; c < KConfigColors; c++ ) {
         TInt idx = paletteMap[c];
-        iDefaultPalette[idx].SetRed(iConfig.colours[c][0]);
-        iDefaultPalette[idx].SetGreen(iConfig.colours[c][1]);
-        iDefaultPalette[idx].SetBlue(iConfig.colours[c][2]);
+        iDefaultPalette[idx].SetRed(conf_get_int_int(iConfig, CONF_colours, c*3+0));
+        iDefaultPalette[idx].SetGreen(conf_get_int_int(iConfig, CONF_colours, c*3+1));
+        iDefaultPalette[idx].SetBlue(conf_get_int_int(iConfig, CONF_colours, c*3+2));
     }
     for ( c = 0; c < KOtherColors; c++) {
 	if ( c < 216 ) {
@@ -430,6 +450,7 @@ void CPuttyEngineImp::ResetPalette() {
 	}
     }
     putty_palette_reset();
+    ilog("CPuttyEngineImp::ResetPalette()");
 }
     
 
@@ -455,7 +476,7 @@ void CPuttyEngineImp::SocketClosed() {
 
 
 // Fatal error (PuTTY callback)
-void CPuttyEngineImp::putty_fatalbox(char *p, va_list ap) {
+void CPuttyEngineImp::putty_fatalbox(const char *p, va_list ap) {
 
     if ( iLogContext ) {
         logflush(iLogContext);
@@ -474,7 +495,8 @@ void CPuttyEngineImp::putty_fatalbox(char *p, va_list ap) {
     sfree(buf);
 }
 
-void fatalbox(char *p, ...) {
+extern "C" {
+void fatalbox(const char *p, ...) {
     CPuttyEngineImp *engine = (CPuttyEngineImp*) statics()->frontend;
     assert(engine);
     va_list ap;
@@ -482,10 +504,11 @@ void fatalbox(char *p, ...) {
     engine->putty_fatalbox(p, ap);
     va_end(ap);
 }
+}
 
 
 // Fatal connection error (PuTTY callback)
-void CPuttyEngineImp::putty_connection_fatal(char *p, va_list ap) {
+void CPuttyEngineImp::putty_connection_fatal(const char *p, va_list ap) {
 
     if ( iLogContext ) {
         logflush(iLogContext);
@@ -504,13 +527,15 @@ void CPuttyEngineImp::putty_connection_fatal(char *p, va_list ap) {
     sfree(buf);
 }
 
-void connection_fatal(void *frontend, char *p, ...) {
+extern "C" {
+void connection_fatal(void *frontend, const char *p, ...) {
     assert(frontend);
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     va_list ap;
     va_start(ap, p);
     engine->putty_connection_fatal(p, ap);
     va_end(ap);
+}
 }
 
 
@@ -537,14 +562,14 @@ void CPuttyEngineImp::putty_do_text(int x, int y, wchar_t *text, int len,
     }
     
     // Bold colors
-    if ( iConfig.bold_colour && (attr & ATTR_BOLD) ) {
+    if ( conf_get_int(iConfig, CONF_bold_style) && (attr & ATTR_BOLD) ) {
         if ( fgIndex < 16 ) {
             fgIndex |= 8;
         } else if ( fgIndex >= 256 ) {
             fgIndex |= 1;
         }
     }
-    if ( iConfig.bold_colour && (attr & ATTR_BLINK) ) {
+    if ( conf_get_int(iConfig, CONF_bold_style) && (attr & ATTR_BLINK) ) {
         if ( bgIndex < 16 ) {
             bgIndex |= 8;
         } else if ( bgIndex >= 256 ) {
@@ -571,7 +596,7 @@ void do_text(Context ctx, int x, int y, wchar_t *text, int len,
 
 // Verify SSH host key (PuTTY callback)
 int CPuttyEngineImp::putty_verify_ssh_host_key(
-    char *host, int port, char *keytype, char *keystr, char *fingerprint) {
+    char *host, int port, const char *keytype, char *keystr, char *fingerprint) {
 
     // Verify key against the store
     int keystatus = verify_host_key(host, port, keytype, keystr);
@@ -619,7 +644,7 @@ int CPuttyEngineImp::putty_verify_ssh_host_key(
 
 extern "C" {
 int verify_ssh_host_key(void *frontend, char *host, int port,
-                         char *keytype, char *keystr, char *fingerprint,
+                         const char *keytype, char *keystr, char *fingerprint,
                          void (*)(void *ctx, int result), void *) {
     assert(frontend);
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
@@ -729,22 +754,26 @@ int CPuttyEngineImp::putty_from_backend(int is_stderr, const char *data,
     return term_data(iTerminal, is_stderr, data, len);
 }
 
+extern "C" {
 int from_backend(void *frontend, int is_stderr, const char *data, int len)
 {
-    assert(frontend);
-    CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
-    return engine->putty_from_backend(is_stderr, data, len);
+	assert(frontend);
+	CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
+	return engine->putty_from_backend(is_stderr, data, len);
+}
 }
 
 int CPuttyEngineImp::putty_from_backend_untrusted(const char *data, int len) {
     return term_data_untrusted(iTerminal, data, len);
 }
 
+extern "C" {
 int from_backend_untrusted(void *frontend, const char *data, int len)
 {
     assert(frontend);
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     return engine->putty_from_backend_untrusted(data, len);
+}
 }
 
 
@@ -753,10 +782,12 @@ void CPuttyEngineImp::putty_logevent(const char *msg) {
     log_eventlog(iLogContext, msg);
 }
 
+extern "C" {
 void logevent(void *frontend, const char *msg) {
     assert(frontend);
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     engine->putty_logevent(msg);
+}
 }
 
 
@@ -768,7 +799,7 @@ int CPuttyEngineImp::putty_get_userpass_input(prompts_t *p) {
 
     // Clear all results in case we get aborted
     for ( i = 0; i < (TInt) p->n_prompts; i++ ) {
-        Mem::FillZ(p->prompts[i]->result, p->prompts[i]->result_len);
+        Mem::FillZ(p->prompts[i]->result, p->prompts[i]->resultsize);
     }
 
     // Go through all prompts in turn
@@ -783,8 +814,8 @@ int CPuttyEngineImp::putty_get_userpass_input(prompts_t *p) {
         TPtr16 promptDes = promptBuf->Des();
         StringToDes(pr->prompt, promptDes);
         
-        assert(pr->result_len > 1);
-        HBufC *destBuf = HBufC::New(pr->result_len-1);
+        assert(pr->resultsize > 1);
+        HBufC *destBuf = HBufC::New(pr->resultsize-1);
         if ( !destBuf ) {
             iClient->FatalError(KOutOfMemory);
         }
@@ -807,13 +838,15 @@ int CPuttyEngineImp::putty_get_userpass_input(prompts_t *p) {
 }
 
 
-int get_userpass_input(prompts_t *p, unsigned char * /*in*/, int /*inlen*/) {
+extern "C" {
+int get_userpass_input(prompts_t *p, const unsigned char * /*in*/, int /*inlen*/) {
     CPuttyEngineImp *engine = (CPuttyEngineImp*) statics()->frontend;
     return engine->putty_get_userpass_input(p);
 }
+}
 
 
-
+extern "C" {
 // Create and destroy a fronend context (PuTTY callbacks). Since we don't
 // maintain any state in a context, the context is the frontend.
 Context get_ctx(void *frontend)
@@ -824,16 +857,19 @@ Context get_ctx(void *frontend)
 void free_ctx(Context /*ctx*/)
 {
 }
+}
 
 
 char *CPuttyEngineImp::putty_get_ttymode(const char *mode) {
     return term_get_ttymode(iTerminal, mode);
 }
 
+extern "C" {
 char *get_ttymode(void *frontend, const char *mode)
 {    
     CPuttyEngineImp *engine = (CPuttyEngineImp*) frontend;
     return engine->putty_get_ttymode(mode);
+}
 }
 
 
@@ -844,14 +880,16 @@ void CPuttyEngineImp::putty_notify_remote_exit() {
     // deallocated.
 }
 
+extern "C" {
 void notify_remote_exit(void *fe) {
     CPuttyEngineImp *engine = (CPuttyEngineImp*) fe;
     engine->putty_notify_remote_exit();
 }
+}
 
 
-void CPuttyEngineImp::putty_timer_change_notify(long next) {
-    long ticks = next - GETTICKCOUNT();
+void CPuttyEngineImp::putty_timer_change_notify(unsigned long next) {
+    unsigned long ticks = next - GETTICKCOUNT();
     if ( ticks <= 0 ) {
         ticks = 1;
     }
@@ -861,13 +899,15 @@ void CPuttyEngineImp::putty_timer_change_notify(long next) {
     iTimerNext = next;
 }
 
-void timer_change_notify(long next) {
+extern "C" {
+void timer_change_notify(unsigned long next) {
     CPuttyEngineImp *engine = (CPuttyEngineImp*) statics()->frontend;
     engine->putty_timer_change_notify(next);
 }
+}
 
 TInt CPuttyEngineImp::DoTimerCallback() {
-    long next;
+    unsigned long next;
     if (run_timers(iTimerNext, &next)) {
         timer_change_notify(next);
     } else {
@@ -906,7 +946,7 @@ void CPuttyEngineImp::DoCancel() {
  *
  **********************************************************/
 
-
+extern "C" {
 /*
  * Move the system caret. (We maintain one, even though it's
  * invisible, for the benefit of blind people: apparently some
@@ -1047,6 +1087,7 @@ Mouse_Button translate_button(Mouse_Button /*button*/)
 {
     return (Mouse_Button) 0;
 }
+}
 
 
 /* This function gets the actual width of a character in the normal font.
@@ -1065,6 +1106,8 @@ char *do_select(RSocketS * /*skt*/, int /*startup*/)
     return NULL;
 }
 
+extern "C" {
+
 void frontend_keypress(void * /*handle*/)
 {
     return;
@@ -1082,15 +1125,44 @@ int char_width(Context /*ctx*/, int /*uc*/) {
     return 1;
 }
 
-extern "C" {
-int askappend(void * /*frontend*/, Filename /*filename*/,
+int askappend(void * /*frontend*/, Filename* /*filename*/,
               void (* /*callback*/)(void *ctx, int result), void * /*ctx*/) {
     // Always rewrite the log file
     return 2;
 }
-}
 
 void set_busy_status(void * /*frontend*/, int /*status*/) {
+}
+
+void frontend_echoedit_update(void */*frontend*/, int /*echo*/, int /*edit*/)
+{
+}
+
+int frontend_is_utf8(void *frontend)
+{
+	return 0;
+}
+
+int askhk(void *frontend, const char *algname, const char *betteralgs,
+          void (*callback)(void *ctx, int result), void *ctx)
+{
+	return 1;
+}
+
+int from_backend_eof(void *frontend)
+{
+    return TRUE;   /* do respond to incoming EOF with outgoing */
+}
+
+int have_ssh_host_key(const char *hostname, int port,
+		      const char *keytype)
+{
+    /*
+     * If we have a host key, verify_host_key will return 0 or 2.
+     * If we don't have one, it'll return 1.
+     */
+    return verify_host_key(hostname, port, keytype, "") != 1;
+}
 }
 
 #ifndef EKA2

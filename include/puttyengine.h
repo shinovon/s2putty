@@ -12,8 +12,9 @@
 
 #include <e32keys.h>
 #include <badesca.h>
+extern "C" {
 #include "putty.h"
-
+}
 
 class MPuttyClient;
 class RSocketServ;

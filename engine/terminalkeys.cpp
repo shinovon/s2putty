@@ -45,7 +45,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
 
     if ( (aKey == EKeyBackspace) && (shiftMod == 0) ) {
         // Backspace
-        *p++ = (char) (aCfg->bksp_is_delete ? 0x7F : 0x08);
+        *p++ = (char) (conf_get_int(aCfg, CONF_bksp_is_delete) ? 0x7F : 0x08);
         return 1;
     }
     if ( (aKey == EKeyTab) && (shiftMod == EModifierShift) ) {
@@ -127,7 +127,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
     if ( code > 0 ) {
         // Magic from window.c...
 	/* Reorder edit keys to physical order */
-	if (aCfg->funky_type == 3 && code <= 6)
+	if (conf_get_int(aCfg, CONF_funky_type) == 3 && code <= 6)
 	    code = "\0\2\1\4\5\3\6"[code];
         
 	if (aTerm->vt52_mode && code > 0 && code <= 6) {
@@ -135,7 +135,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
 	    return p - aOutput;
 	}
         
-	if (aCfg->funky_type == 5 &&     /* SCO function keys */
+	if (conf_get_int(aCfg, CONF_funky_type) == 5 &&     /* SCO function keys */
 	    code >= 11 && code <= 34) {
 	    static const char codes[] =
                 "MNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@[\\]^_`{";
@@ -144,7 +144,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
 	    return p - aOutput;
 	}
         
-	if (aCfg->funky_type == 5 &&     /* SCO small keypad */
+	if (conf_get_int(aCfg, CONF_funky_type) == 5 &&     /* SCO small keypad */
 	    code >= 1 && code <= 6) {
 	    char codes[] = "HL.FIG";
 	    if (code == 3) {
@@ -155,7 +155,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
 	    return p - aOutput;
 	}
         
-	if ((aTerm->vt52_mode || aCfg->funky_type == 4) && code >= 11 && code <= 24) {
+	if ((aTerm->vt52_mode || conf_get_int(aCfg, CONF_funky_type) == 4) && code >= 11 && code <= 24) {
 	    int offt = 0;
 	    if (code > 15)
 		offt++;
@@ -168,18 +168,18 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
 		    sprintf((char *) p, "\x1BO%c", code + 'P' - 11 - offt);
 	    return p - aOutput;
 	}
-	if (aCfg->funky_type == 1 && code >= 11 && code <= 15) {
+	if (conf_get_int(aCfg, CONF_funky_type) == 1 && code >= 11 && code <= 15) {
 	    p += sprintf((char *) p, "\x1B[[%c", code + 'A' - 11);
 	    return p - aOutput;
 	}
-	if (aCfg->funky_type == 2 && code >= 11 && code <= 14) {
+	if (conf_get_int(aCfg, CONF_funky_type) == 2 && code >= 11 && code <= 14) {
 	    if (aTerm->vt52_mode)
 		p += sprintf((char *) p, "\x1B%c", code + 'P' - 11);
 	    else
 		p += sprintf((char *) p, "\x1BO%c", code + 'P' - 11);
 	    return p - aOutput;
 	}
-	if (aCfg->rxvt_homeend && (code == 1 || code == 4)) {
+	if (conf_get_int(aCfg, CONF_rxvt_homeend) && (code == 1 || code == 4)) {
 	    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1BOw");
 	    return p - aOutput;
 	}
@@ -210,7 +210,7 @@ TInt TranslateKey(Config *aCfg, Terminal *aTerm, TKeyCode aKey,
         if (aTerm->vt52_mode)
             p += sprintf((char *) p, "\x1B%c", xkey);
         else {
-            int app_flg = (aTerm->app_cursor_keys && !aCfg->no_applic_c);
+            int app_flg = (aTerm->app_cursor_keys && !conf_get_int(aCfg, CONF_no_applic_c));
             
             /* Useful mapping of Ctrl-arrows */
             if ( shiftMod == EModifierCtrl )

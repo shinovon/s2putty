@@ -131,6 +131,7 @@ static int cmpforsearch(void *av, void *bv)
     return 0;
 }
 
+extern "C" {
 void sk_init(void)
 {
     TNetStatics *statics = new TNetStatics;
@@ -167,6 +168,7 @@ void sk_cleanup(void)
 
     delete statics;
     ((SymbianStatics*)statics()->platform)->net_state = NULL;
+}
 }
 
 // Set watcher object. Set to NULL to disable.
@@ -348,6 +350,7 @@ SockAddr sk_namelookup(const char *host, char **canonicalname, int address_famil
     return ret;
 }
 
+extern "C" {
 SockAddr sk_nonamelookup(const char *host)
 {
     SockAddr ret = snew(struct SockAddr_tag);
@@ -373,7 +376,7 @@ void sk_getaddr(SockAddr addr, char *buf, int buflen)
     }
 }
 
-int sk_hostname_is_local(char *name)
+int sk_hostname_is_local(const char *name)
 {
     return !strcmp(name, "localhost");
 }
@@ -394,6 +397,11 @@ int sk_address_is_local(SockAddr addr)
 	return 0;
     }
 #endif
+}
+
+int sk_address_is_special_local(SockAddr addr)
+{
+    return 0;
 }
 
 int sk_addrtype(SockAddr addr)
@@ -426,6 +434,17 @@ void sk_addr_free(SockAddr addr)
     sfree(addr);
 }
 
+SockAddr sk_addr_dup(SockAddr addr)
+{
+    return addr;
+}
+
+int sk_addr_needs_port(SockAddr addr)
+{
+    return TRUE;
+}
+}
+
 static Plug sk_tcp_plug(Socket sock, Plug p)
 {
     Actual_Socket s = (Actual_Socket) sock;
@@ -446,25 +465,27 @@ static void sk_tcp_flush(Socket /*s*/)
 static void sk_tcp_close(Socket s);
 static int sk_tcp_write(Socket s, const char *data, int len);
 static int sk_tcp_write_oob(Socket s, const char *data, int len);
+static void sk_tcp_write_eof(Socket s);
 static void sk_tcp_set_private_ptr(Socket s, void *ptr);
 static void *sk_tcp_get_private_ptr(Socket s);
 static void sk_tcp_set_frozen(Socket s, int is_frozen);
 static const char *sk_tcp_socket_error(Socket s);
+static char *sk_tcp_peer_info(Socket s);
 
 extern char *do_select(RSocketS *skt, int startup);
 
-Socket sk_register(void *sock, Plug plug)
+static Socket sk_tcp_accept(accept_ctx_t ctx, Plug plug)
 {
     static const struct socket_function_table fn_table = {
 	sk_tcp_plug,
 	sk_tcp_close,
 	sk_tcp_write,
 	sk_tcp_write_oob,
+	sk_tcp_write_eof,
 	sk_tcp_flush,
-	sk_tcp_set_private_ptr,
-	sk_tcp_get_private_ptr,
 	sk_tcp_set_frozen,
-	sk_tcp_socket_error
+	sk_tcp_socket_error,
+	sk_tcp_peer_info
     };
 
     char *errstr;
@@ -490,7 +511,7 @@ Socket sk_register(void *sock, Plug plug)
     ret->killing=0;
     ret->addr = NULL;
 
-    ret->s = (RSocketS *)sock;
+    ret->s = (RSocketS *)ctx.p;
 
     if (ret->s == INVALID_SOCKET) {
 	ret->error = FormatError("Socket register", KInvalSocket);
@@ -522,6 +543,8 @@ Socket sk_register(void *sock, Plug plug)
     return (Socket) ret;
 }
 
+extern "C" {
+
 Socket sk_new(SockAddr addr, int port, int privport, int oobinline,
 	      int nodelay, int keepalive, Plug plug)
 {
@@ -530,11 +553,11 @@ Socket sk_new(SockAddr addr, int port, int privport, int oobinline,
 	sk_tcp_close,
 	sk_tcp_write,
 	sk_tcp_write_oob,
+	sk_tcp_write_eof,
 	sk_tcp_flush,
-	sk_tcp_set_private_ptr,
-	sk_tcp_get_private_ptr,
 	sk_tcp_set_frozen,
-	sk_tcp_socket_error
+	sk_tcp_socket_error,
+	sk_tcp_peer_info
     };
 
     TInt err;
@@ -663,18 +686,18 @@ Socket sk_new(SockAddr addr, int port, int privport, int oobinline,
     return (Socket) ret;
 }
 
-Socket sk_newlistener(char *srcaddr, int port, Plug plug, int local_host_only, int address_family)
+Socket sk_newlistener(const char *srcaddr, int port, Plug plug, int local_host_only, int address_family)
 {
     static const struct socket_function_table fn_table = {
 	sk_tcp_plug,
 	sk_tcp_close,
 	sk_tcp_write,
 	sk_tcp_write_oob,
+	sk_tcp_write_eof,
 	sk_tcp_flush,
-	sk_tcp_set_private_ptr,
-	sk_tcp_get_private_ptr,
 	sk_tcp_set_frozen,
-	sk_tcp_socket_error
+	sk_tcp_socket_error,
+	sk_tcp_peer_info
     };
 
     TInt err;
@@ -780,6 +803,8 @@ Socket sk_newlistener(char *srcaddr, int port, Plug plug, int local_host_only, i
     return (Socket) ret;
 }
 
+}
+
 static void sk_tcp_close(Socket sock)
 {
     Actual_Socket s = (Actual_Socket) sock;
@@ -854,6 +879,11 @@ static int sk_tcp_write_oob(Socket sock, const char *buf, int len)
     if (s->writable) s->s->s->Sendit();
 
     return s->sending_oob;
+}
+
+static void sk_tcp_write_eof(Socket s)
+{
+	
 }
 
 int select_result(RSocketS *wParam, int /*lParam*/)
@@ -943,6 +973,11 @@ static const char *sk_tcp_socket_error(Socket sock)
     return s->error;
 }
 
+static char *sk_tcp_peer_info(Socket s)
+{
+	return NULL;
+}
+
 static void sk_tcp_set_frozen(Socket sock, int is_frozen)
 {
     Actual_Socket s = (Actual_Socket) sock;
@@ -956,6 +991,7 @@ static void sk_tcp_set_frozen(Socket sock, int is_frozen)
     s->frozen_readable = 0;
 }
 
+extern "C" {
 /*
  * For Plink: enumerate all sockets currently active.
  */
@@ -978,7 +1014,7 @@ int net_service_lookup(char * /*service*/)
     return 0;
 }
 
-SockAddr platform_get_x11_unix_address(int /*displaynum*/, char ** /*canonicalname*/)
+SockAddr platform_get_x11_unix_address(const char */*path*/, int /*displaynum*/)
 {
     SockAddr ret = snew(struct SockAddr_tag);
     memset(ret, 0, sizeof(struct SockAddr_tag));
@@ -986,6 +1022,11 @@ SockAddr platform_get_x11_unix_address(int /*displaynum*/, char ** /*canonicalna
     return ret;
 }
 
+
+char *get_hostname(void) {
+	return NULL;
+}
+}
 
 // Get number of active sockets
 int sk_num_active_sockets(void) {
@@ -1279,11 +1320,15 @@ void CAcceptor::DoRunL()
 		delete s->accepted;
 		s->accepted=NULL;
 	}
-	else if (plug_accepting(s->plug, (void*)s->accepted))
-	{
-		s->accepted->Close();
-		delete s->accepted;
-		s->accepted=NULL;
+	else {
+        accept_ctx_t actx;
+        actx.p = s->accepted;
+		if (plug_accepting(s->plug, sk_tcp_accept, actx))
+		{
+			s->accepted->Close();
+			delete s->accepted;
+			s->accepted=NULL;
+		}
 	}
 	StartAcceptor();
 }

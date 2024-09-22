@@ -35,11 +35,11 @@ public:
     ~CPuttyEngineImp();
 
     // Methods corresponding to PuTTY callbacks
-    void putty_fatalbox(char *p, va_list ap);
-    void putty_connection_fatal(char *p, va_list ap);
+    void putty_fatalbox(const char *p, va_list ap);
+    void putty_connection_fatal(const char *p, va_list ap);
     void putty_do_text(int x, int y, wchar_t *text, int len,
                        unsigned long attr, int lattr);
-    int putty_verify_ssh_host_key(char *host, int port, char *keytype,
+    int putty_verify_ssh_host_key(char *host, int port, const char *keytype,
                                    char *keystr, char *fingerprint);
     int putty_askcipher(const char *ciphername, const char *ciphertype);
     void putty_palette_set(int n, int r, int g, int b);
@@ -54,7 +54,7 @@ public:
       int is_pw);*/
     char *putty_get_ttymode(const char *mode);
     void putty_notify_remote_exit();
-    void putty_timer_change_notify(long next);
+    void putty_timer_change_notify(unsigned long next);
     
     // CPuttyEngine methods
     virtual Config *GetConfig();
@@ -99,7 +99,7 @@ private:
     TRgb *iDefaultPalette;
     TRgb *iPalette;
 
-    Config iConfig;
+    Config *iConfig;
     void *iBackendHandle;
     const Backend *iBackend;
     Terminal *iTerminal;

@@ -11,7 +11,9 @@
 #define PALETTES_H
 
 #include <e32base.h>
-
+extern "C" {
+#include "putty.h"
+}
 
 /**
  * PuTTY palettes from the resource file. This class reads palette information
@@ -45,6 +47,9 @@ public:
      *         value will be used, so the return value is always valid.
      */
     TInt IdentifyPalette(const unsigned char *aConfigColours);
+    
+
+    TInt IdentifyPalette(Config *aConfig);
 
     /** 
      * Fills a PuTTY Config.colours array with the values from a chosen palette
@@ -53,6 +58,8 @@ public:
      * @param aConfigColours Pointer to the target Config.colours array
      */
     void GetPalette(TInt aPalette, unsigned char *aConfigColours);
+
+    void GetPalette(TInt aPalette, Config *aConfig);
 
     /** 
      * Retrieves the number of palettes available. Possible palette IDs run

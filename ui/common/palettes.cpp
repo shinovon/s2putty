@@ -84,6 +84,27 @@ TInt CPalettes::IdentifyPalette(const unsigned char *aConfigColours) {
 }
 
 
+TInt CPalettes::IdentifyPalette(Config *aConfig) {
+    TUint8 *p = iPaletteData;
+    for ( TInt i = 0; i < iNumPalettes; i++ ) {
+        TInt j;
+        for ( j = 0; j < KPaletteBytes; j++ ) {
+            if ( p[j] != conf_get_int_int(aConfig, CONF_colours, j) ) {
+                break;
+            }
+        }
+        if ( j == KPaletteBytes ) {
+            // Match found
+            return i;
+        }
+        p += KPaletteBytes;
+    }
+    
+    // No matches found, use default
+    return KDefaultPalette;
+}
+
+
 // Copy a palette to a PuTTY Config.colours array
 void CPalettes::GetPalette(TInt aPalette, unsigned char *aConfigColours) {
     if ( (aPalette < 0) || (aPalette >= iNumPalettes) ) {
@@ -91,6 +112,15 @@ void CPalettes::GetPalette(TInt aPalette, unsigned char *aConfigColours) {
     }
     Mem::Copy(aConfigColours, &iPaletteData[aPalette*KPaletteBytes],
               KPaletteBytes);
+}
+
+void CPalettes::GetPalette(TInt aPalette, Config *aConfig) {
+    if ( (aPalette < 0) || (aPalette >= iNumPalettes) ) {
+        User::Panic(KPanic, EPalettePanicBadId);
+    }
+    for (int i = 0; i < KPaletteBytes; ++i) {
+    	conf_set_int_int(aConfig, CONF_colours, i, iPaletteData[aPalette*KPaletteBytes+i]);
+    }
 }
 
 

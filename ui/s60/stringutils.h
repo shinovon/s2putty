@@ -32,6 +32,9 @@ void StringToDes(const char *aStr, TDes &aTarget);
  */
 void DesToString(const TDesC &aDes, char *aTarget, int targetLen);
 
+
+char *DesToString(const TDesC &aDes);
+
 /** 
  * Converts a NUL-terminated C-style string into a dynamically allocated buffer
  * descriptor. Only supports 7-bit ASCII. The descriptor is left in the cleanup

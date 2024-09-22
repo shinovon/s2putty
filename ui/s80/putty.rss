@@ -867,7 +867,7 @@ RESOURCE TBUF r_str_show_putty_config_files { buf = "Show PuTTY\nconfig files"; 
 RESOURCE TBUF r_str_about_title { buf = "About PuTTY"; }
 
 // ABout dialog contents (FIXME: Make more dynamic)
-RESOURCE TBUF r_str_about_text { buf = "PuTTY for Symbian OS\nVersion 1.5.2\nBased on PuTTY 0.60\nBuilt " __DATE__ ", " __TIME__; }
+RESOURCE TBUF r_str_about_text { buf = "PuTTY for Symbian OS\nVersion 1.5.2\nBased on PuTTY 0.68\nBuilt " __DATE__ ", " __TIME__; }
 
 // Delete profile confirmation title
 RESOURCE TBUF r_str_delete_profile_confirm_title { buf = "Delete profile?"; }

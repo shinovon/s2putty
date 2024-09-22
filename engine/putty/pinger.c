@@ -8,18 +8,18 @@
 struct pinger_tag {
     int interval;
     int pending;
-    long next;
-    Backend *back;
+    unsigned long when_set, next;
+    const Backend *back;
     void *backhandle;
 };
 
 static void pinger_schedule(Pinger pinger);
 
-static void pinger_timer(void *ctx, long now)
+static void pinger_timer(void *ctx, unsigned long now)
 {
     Pinger pinger = (Pinger)ctx;
 
-    if (pinger->pending && now - pinger->next >= 0) {
+    if (pinger->pending && now == pinger->next) {
 	pinger->back->special(pinger->backhandle, TS_PING);
 	pinger->pending = FALSE;
 	pinger_schedule(pinger);
@@ -28,7 +28,7 @@ static void pinger_timer(void *ctx, long now)
 
 static void pinger_schedule(Pinger pinger)
 {
-    int next;
+    unsigned long next;
 
     if (!pinger->interval) {
 	pinger->pending = FALSE;       /* cancel any pending ping */
@@ -37,29 +37,32 @@ static void pinger_schedule(Pinger pinger)
 
     next = schedule_timer(pinger->interval * TICKSPERSEC,
 			  pinger_timer, pinger);
-    if (!pinger->pending || next < pinger->next) {
+    if (!pinger->pending ||
+        (next - pinger->when_set) < (pinger->next - pinger->when_set)) {
 	pinger->next = next;
+        pinger->when_set = timing_last_clock();
 	pinger->pending = TRUE;
     }
 }
 
-Pinger pinger_new(Config *cfg, const Backend *back, void *backhandle)
+Pinger pinger_new(Conf *conf, const Backend *back, void *backhandle)
 {
     Pinger pinger = snew(struct pinger_tag);
 
-    pinger->interval = cfg->ping_interval;
+    pinger->interval = conf_get_int(conf, CONF_ping_interval);
     pinger->pending = FALSE;
-    pinger->back = (Backend*) back;
+    pinger->back = back;
     pinger->backhandle = backhandle;
     pinger_schedule(pinger);
 
     return pinger;
 }
 
-void pinger_reconfig(Pinger pinger, Config *oldcfg, Config *newcfg)
+void pinger_reconfig(Pinger pinger, Conf *oldconf, Conf *newconf)
 {
-    if (oldcfg->ping_interval != newcfg->ping_interval) {
-	pinger->interval = newcfg->ping_interval;
+    int newinterval = conf_get_int(newconf, CONF_ping_interval);
+    if (conf_get_int(oldconf, CONF_ping_interval) != newinterval) {
+	pinger->interval = newinterval;
 	pinger_schedule(pinger);
     }
 }

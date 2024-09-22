@@ -15,12 +15,16 @@ int agent_exists(void)
     return FALSE;
 }
 
-int agent_query(void * /*in*/, int /*inlen*/, void **out, int *outlen,
+void agent_cancel_query(agent_pending_query *q)
+{
+}
+
+agent_pending_query *agent_query(void * /*in*/, int /*inlen*/, void **out, int *outlen,
                 void (* /*callback*/ )(void *, void *, int),
                 void * /*callback_ctx*/)
 {
     *out = NULL;
     *outlen = 0;
-    return 1;
+    return NULL;
 }
 }
