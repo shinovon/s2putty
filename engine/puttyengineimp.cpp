@@ -1140,7 +1140,7 @@ void frontend_echoedit_update(void */*frontend*/, int /*echo*/, int /*edit*/)
 
 int frontend_is_utf8(void *frontend)
 {
-	return 0;
+	return TRUE;
 }
 
 int askhk(void *frontend, const char *algname, const char *betteralgs,
