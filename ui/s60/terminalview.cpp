@@ -817,6 +817,7 @@ void CTerminalView::DrawText(TInt aX, TInt aY, const TDesC &aText, TBool aBold,
                              TRgb aBackground) {
     iContainer->Terminal().DrawText(aX, aY, aText, aBold, aUnderline,
                                     aForeground, aBackground);
+    iContainer->DrawDeferred();
 }
 
 
