@@ -11,5 +11,8 @@ MACRO		PUTTY_S60
 MACRO		PUTTY_S60V3
 MACRO		PUTTY_IPV6
 
+OPTION ARMCC --gnu
+EPOCALLOWDLLDATA
+
 // Get all real definitions from the common include
 #include "../common/puttyengine.mmh"
