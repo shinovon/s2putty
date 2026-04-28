@@ -33,6 +33,7 @@ enum TCommands {
     EPuttyCmdSendTab,
     EPuttyCmdSendCtrlKeys,
     EPuttyCmdSendCtrlAD,
+    EPuttyCmdSendCtrlB,
     EPuttyCmdSendCtrlC,
     EPuttyCmdSendCtrlD,
     EPuttyCmdSendCtrlZ,

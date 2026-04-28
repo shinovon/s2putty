@@ -110,6 +110,7 @@ void CTerminalView::HandleCommandL(TInt aCommand) {
         { EPuttyCmdSendAlt9, (TKeyCode) '9', EModifierAlt },
         { EPuttyCmdSendAlt0, (TKeyCode) '0', EModifierAlt },
         { EPuttyCmdSendCtrlBrkt, (TKeyCode) 0x1d, 0 },
+        { EPuttyCmdSendCtrlB, (TKeyCode) 0x02, 0 },
         { EPuttyCmdSendCtrlC, (TKeyCode) 0x03, 0, },
         { EPuttyCmdSendCtrlD, (TKeyCode) 0x04, 0 },
         { EPuttyCmdSendCtrlZ, (TKeyCode) 26,0 },

@@ -715,7 +715,7 @@ RESOURCE MENU_PANE r_putty_send_ctrl_grid {
         SENDGRID_ITEM /*3*/ { command = EPuttyCmdSendCtrlBrkt; txt = "Ctrl-]"; },
         SENDGRID_ITEM /*4*/ { command = EPuttyCmdSendCtrlC; txt = "Ctrl-C"; },
         SENDGRID_ITEM /*5*/ { command = EPuttyCmdSendCtrlZ; txt = "Ctrl-Z"; },
-        SENDGRID_ITEM /*6*/ { txt = ""; },
+        SENDGRID_ITEM /*6*/ { command = EPuttyCmdSendCtrlB; txt = "Ctrl-B"; },
         SENDGRID_ITEM /*7*/ { txt = ""; },
         SENDGRID_ITEM /*8*/ { txt = ""; },
         SENDGRID_ITEM /*9*/ { txt = ""; },
