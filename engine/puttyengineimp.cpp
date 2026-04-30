@@ -157,6 +157,31 @@ CPuttyEngineImp::~CPuttyEngineImp() {
     User::Free(statics()->platform);
     statics()->platform = NULL;
     statics()->frontend = NULL;
+    
+    if (statics()->ec_p256_curve) {
+    	free(statics()->ec_p256_curve);
+    	statics()->ec_p256_curve = NULL;
+    }
+    statics()->ec_p256_initialised = false;
+    
+    if (statics()->ec_p384_curve) {
+    	free(statics()->ec_p384_curve);
+    	statics()->ec_p384_curve = NULL;
+    }
+    statics()->ec_p384_initialised = false;
+    
+    if (statics()->ec_curve25519_curve) {
+    	free(statics()->ec_curve25519_curve);
+    	statics()->ec_curve25519_curve = NULL;
+    }
+    statics()->ec_curve25519_initialised = false;
+    
+    if (statics()->ec_ed25519_curve) {
+    	free(statics()->ec_ed25519_curve);
+    	statics()->ec_ed25519_curve = NULL;
+    }
+    statics()->ec_ed25519_initialised = false;
+    
     remove_statics_tls();
 
     delete[] iConnError;

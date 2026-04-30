@@ -236,4 +236,6 @@ void free_timers(void)
         freetree234(statics()->timers);
         statics()->timers = NULL;
     }
+    
+    statics()->now = 0;
 }
