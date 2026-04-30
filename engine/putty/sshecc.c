@@ -158,7 +158,7 @@ static struct ec_curve *ec_p256(void)
 {
     if (!statics()->ec_p256_initialised)
     {
-    	statics()->ec_p256_curve = malloc(sizeof(struct ec_curve));
+    	statics()->ec_p256_curve = snewn(1, struct ec_curve);
         initialise_wcurve(statics()->ec_p256_curve, 256, ec_p256_p, ec_p256_a, ec_p256_b, ec_p256_n, ec_p256_Gx, ec_p256_Gy);
         statics()->ec_p256_curve->textname = statics()->ec_p256_curve->name = "nistp256";
 
@@ -223,7 +223,7 @@ static struct ec_curve *ec_p384(void)
 {
     if (!statics()->ec_p384_initialised)
     {
-    	statics()->ec_p384_curve = malloc(sizeof(struct ec_curve));
+    	statics()->ec_p384_curve = snewn(1, struct ec_curve);
         initialise_wcurve(statics()->ec_p384_curve, 384, ec_p384_p, ec_p384_a, ec_p384_b, ec_p384_n, ec_p384_Gx, ec_p384_Gy);
         statics()->ec_p384_curve->textname = statics()->ec_p384_curve->name = "nistp384";
 
@@ -306,7 +306,7 @@ static struct ec_curve *ec_p521(void)
 {
     if (!statics()->ec_p521_initialised)
     {
-    	statics()->ec_p521_curve = malloc(sizeof(struct ec_curve));
+    	statics()->ec_p521_curve = snewn(1, struct ec_curve);
     	
         initialise_wcurve(statics()->ec_p521_curve, 521, ec_p521_p, ec_p521_a, ec_p521_b, ec_p521_n, ec_p521_Gx, ec_p521_Gy);
         statics()->ec_p521_curve->textname = statics()->ec_p521_curve->name = "nistp521";
@@ -347,7 +347,7 @@ static struct ec_curve *ec_curve25519(void)
 {
     if (!statics()->ec_curve25519_initialised)
     {
-    	statics()->ec_curve25519_curve = malloc(sizeof(struct ec_curve));
+    	statics()->ec_curve25519_curve = snewn(1, struct ec_curve);
     	
         initialise_mcurve(statics()->ec_curve25519_curve, 256, ec_curve25519_p, ec_curve25519_a, ec_curve25519_b, ec_curve25519_gx);
         /* This curve doesn't need a name, because it's never used in
@@ -397,7 +397,7 @@ static struct ec_curve *ec_ed25519(void)
 {
     if (!statics()->ec_ed25519_initialised)
     {
-    	statics()->ec_ed25519_curve = malloc(sizeof(struct ec_curve));
+    	statics()->ec_ed25519_curve = snewn(1, struct ec_curve);
     	
         /* This curve doesn't need a name, because it's never used in
          * any format that embeds the curve name */
