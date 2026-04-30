@@ -54,6 +54,9 @@ LIBRARY		ws32.lib apgrfx.lib gdi.lib bafl.lib
 #ifdef EKA2
 MACRO		PUTTY_HAVE_SYSTEMRANDOM
 LIBRARY		random.lib
+#ifdef _DEBUG
+SRCDBG
+#endif
 #else
 MACRO		PUTTY_HAVE_SYSAGENT
 LIBRARY		sysagt.lib

@@ -65,19 +65,18 @@ const char *const ttymodes[] = {
  * Convenience functions to access the backends[] array
  * (which is only present in tools that manage settings).
  */
-
-const Backend *backend_from_name(const char *name)
+const Backend * const backend_from_name(const char *name)
 {
-	const Backend **p;
+	const Backend *const*p;
     for (p = backends; *p != NULL; p++)
 	if (!strcmp((*p)->name, name))
 	    return *p;
     return NULL;
 }
 
-const Backend *backend_from_proto(int proto)
+const Backend * const backend_from_proto(int proto)
 {
-	const Backend **p;
+	const Backend *const*p;
     for (p = backends; *p != NULL; p++)
 	if ((*p)->protocol == proto)
 	    return *p;
@@ -472,7 +471,7 @@ void save_open_settings(void *sesskey, Conf *conf)
     write_setting_i(sesskey, "SSHLogOmitData", conf_get_int(conf, CONF_logomitdata));
     p = "raw";
     {
-	const Backend *b = backend_from_proto(conf_get_int(conf, CONF_protocol));
+	const Backend * const b = backend_from_proto(conf_get_int(conf, CONF_protocol));
 	if (b)
 	    p = b->name;
     }
@@ -722,7 +721,7 @@ void load_open_settings(void *sesskey, Conf *conf)
     conf_set_int(conf, CONF_protocol, statics()->default_protocol);
     conf_set_int(conf, CONF_port, statics()->default_port);
     {
-	const Backend *b = backend_from_name(prot);
+	const Backend * const b = backend_from_name(prot);
 	if (b) {
 	    conf_set_int(conf, CONF_protocol, b->protocol);
 	    gppi(sesskey, "PortNumber", statics()->default_port, conf, CONF_port);

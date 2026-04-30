@@ -28,7 +28,7 @@ extern "C" {
 //const int be_default_protocol = PROT_SSH;
 //const int platform_uses_x11_unix_by_default = FALSE;
 
-const struct Backend *const backends[] = {
+const Backend *const backends[] = {
     &ssh_backend,
     NULL
 };

@@ -265,7 +265,8 @@ void CTerminalView::HandleCommandL(TInt aCommand) {
                     // put selection on clipboard
                     CClipboard* cb = CClipboard::NewForWritingLC(
                         CCoeEnv::Static()->FsSession());
-                    cb->StreamDictionary().At(KClipboardUidTypePlainText);
+                    TUid uid = {268450333}; // KClipboardUidTypePlainText
+                    cb->StreamDictionary().At(uid);
                     CPlainText *plainText = CPlainText::NewL();
                     CleanupStack::PushL(plainText);    			 
                     plainText->InsertL(0, *text);    				    			 
@@ -298,7 +299,8 @@ void CTerminalView::HandleCommandL(TInt aCommand) {
             	CClipboard* cb = CClipboard::NewForReadingL(
                     CCoeEnv::Static()->FsSession());
             	CleanupStack::PushL(cb);
-            	cb->StreamDictionary().At(KClipboardUidTypePlainText);
+                TUid uid = {268450333}; // KClipboardUidTypePlainText
+                cb->StreamDictionary().At(uid);
 
             	plainText->PasteFromStoreL(cb->Store(), cb->StreamDictionary(),
                                            0);

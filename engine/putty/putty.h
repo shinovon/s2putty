@@ -1034,8 +1034,8 @@ void random_destroy_seed(void);
 /*
  * Exports from settings.c.
  */
-const Backend *backend_from_name(const char *name);
-const Backend *backend_from_proto(int proto);
+const Backend * const backend_from_name(const char *name);
+const Backend * const backend_from_proto(int proto);
 char *get_remote_username(Conf *conf); /* dynamically allocated */
 char *save_settings(const char *section, Conf *conf);
 void save_open_settings(void *sesskey, Conf *conf);
@@ -1139,7 +1139,7 @@ extern Backend loop_backend;
  * Exports from raw.c.
  */
 
-extern Backend raw_backend;
+extern const Backend raw_backend;
 
 /*
  * Exports from rlogin.c.

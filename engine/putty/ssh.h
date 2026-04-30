@@ -698,7 +698,7 @@ extern void base64_encode(FILE *fp, const unsigned char *data, int datalen,
 
 /* ssh2_load_userkey can return this as an error */
 extern const struct ssh2_userkey ssh2_wrong_passphrase;
-#define SSH2_WRONG_PASSPHRASE (&ssh2_wrong_passphrase)
+#define SSH2_WRONG_PASSPHRASE ((struct ssh2_userkey*)&ssh2_wrong_passphrase)
 
 int ssh2_userkey_encrypted(const Filename *filename, char **comment);
 struct ssh2_userkey *ssh2_load_userkey(const Filename *filename,

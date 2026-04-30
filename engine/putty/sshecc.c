@@ -397,6 +397,8 @@ static struct ec_curve *ec_ed25519(void)
 {
     if (!statics()->ec_ed25519_initialised)
     {
+    	statics()->ec_ed25519_curve = malloc(sizeof(struct ec_curve));
+    	
         /* This curve doesn't need a name, because it's never used in
          * any format that embeds the curve name */
     	statics()->ec_ed25519_curve->name = NULL;

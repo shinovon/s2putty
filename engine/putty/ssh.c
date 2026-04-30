@@ -10073,9 +10073,10 @@ static void do_ssh2_authconn(Ssh ssh, const unsigned char *in, int inlen,
 		    ssh2_pkt_send(ssh, s->pktout);
                     logevent("Sent public key signature");
 		    s->type = AUTH_TYPE_PUBLICKEY;
-		    key->alg->freekey(key->data);
-                    sfree(key->comment);
-                    sfree(key);
+		    // FIXME: can't free key because it may be from read only data, loaded private keys will leak!
+//		    key->alg->freekey(key->data);
+//                    sfree(key->comment);
+//                    sfree(key);
 		}
 
 #ifndef NO_GSSAPI
