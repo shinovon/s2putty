@@ -1099,7 +1099,7 @@ static int telnet_cfg_info(void *handle)
     return 0;
 }
 
-Backend telnet_backend = {
+const Backend telnet_backend = {
     telnet_init,
     telnet_free,
     telnet_reconfig,

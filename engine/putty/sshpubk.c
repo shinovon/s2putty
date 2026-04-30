@@ -610,7 +610,7 @@ static unsigned char *read_blob(FILE * fp, int nlines, int *bloblen)
 /*
  * Magic error return value for when the passphrase is wrong.
  */
-struct ssh2_userkey ssh2_wrong_passphrase = {
+const struct ssh2_userkey ssh2_wrong_passphrase = {
     NULL, NULL, NULL
 };
 

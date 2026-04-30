@@ -40,10 +40,6 @@ struct timer {
     unsigned long when_set;
 };
 
-static tree234 *timers = NULL;
-static tree234 *timer_contexts = NULL;
-static unsigned long now = 0L;
-
 static int compare_timers(void *av, void *bv)
 {
     struct timer *a = (struct timer *)av;
@@ -99,10 +95,10 @@ static int compare_timer_contexts(void *av, void *bv)
 
 static void init_timers(void)
 {
-    if (!timers) {
-	timers = newtree234(compare_timers);
-	timer_contexts = newtree234(compare_timer_contexts);
-	now = GETTICKCOUNT();
+	if (!statics()->timers) {
+		statics()->timers = newtree234(compare_timers);
+		statics()->timer_contexts = newtree234(compare_timer_contexts);
+		statics()->now = GETTICKCOUNT();
     }
 }
 
@@ -113,30 +109,30 @@ unsigned long schedule_timer(int ticks, timer_fn_t fn, void *ctx)
 
     init_timers();
 
-    now = GETTICKCOUNT();
-    when = ticks + now;
+    statics()->now = GETTICKCOUNT();
+    when = ticks + statics()->now;
 
     /*
      * Just in case our various defences against timing skew fail
      * us: if we try to schedule a timer that's already in the
      * past, we instead schedule it for the immediate future.
      */
-    if (when - now <= 0)
-	when = now + 1;
+    if (when - statics()->now <= 0)
+	when = statics()->now + 1;
 
     t = snew(struct timer);
     t->fn = fn;
     t->ctx = ctx;
     t->now = when;
-    t->when_set = now;
+    t->when_set = statics()->now;
 
-    if (t != add234(timers, t)) {
+    if (t != add234(statics()->timers, t)) {
 	sfree(t);		       /* identical timer already exists */
     } else {
-	add234(timer_contexts, t->ctx);/* don't care if this fails */
+	add234(statics()->timer_contexts, t->ctx);/* don't care if this fails */
     }
 
-    first = (struct timer *)index234(timers, 0);
+    first = (struct timer *)index234(statics()->timers, 0);
     if (first == t) {
 	/*
 	 * This timer is the very first on the list, so we must
@@ -156,7 +152,7 @@ unsigned long timing_last_clock(void)
      * 'now' that was used to decide when the timer you just set would
      * go off.
      */
-    return now;
+    return statics()->now;
 }
 
 /*
@@ -170,28 +166,28 @@ int run_timers(unsigned long anow, unsigned long *next)
 
     init_timers();
 
-    now = GETTICKCOUNT();
+    statics()->now = GETTICKCOUNT();
 
     while (1) {
-	first = (struct timer *)index234(timers, 0);
+	first = (struct timer *)index234(statics()->timers, 0);
 
 	if (!first)
 	    return FALSE;	       /* no timers remaining */
 
-	if (find234(timer_contexts, first->ctx, NULL) == NULL) {
+	if (find234(statics()->timer_contexts, first->ctx, NULL) == NULL) {
 	    /*
 	     * This timer belongs to a context that has been
 	     * expired. Delete it without running.
 	     */
-	    delpos234(timers, 0);
+	    delpos234(statics()->timers, 0);
 	    sfree(first);
-	} else if (now - (first->when_set - 10) >
+	} else if (statics()->now - (first->when_set - 10) >
 		   first->now - (first->when_set - 10)) {
 	    /*
 	     * This timer is active and has reached its running
 	     * time. Run it.
 	     */
-	    delpos234(timers, 0);
+	    delpos234(statics()->timers, 0);
 	    first->fn(first->ctx, first->now);
 	    sfree(first);
 	} else {
@@ -218,7 +214,7 @@ void expire_timer_context(void *ctx)
      * ever actually got scheduled for it) then that's fine and we
      * simply don't need to do anything.
      */
-    del234(timer_contexts, ctx);
+    del234(statics()->timer_contexts, ctx);
 }
 
 /*

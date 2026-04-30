@@ -313,7 +313,7 @@ static int raw_cfg_info(void *handle)
     return 0;
 }
 
-Backend raw_backend = {
+const Backend raw_backend = {
     raw_init,
     raw_free,
     raw_reconfig,

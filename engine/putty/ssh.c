@@ -10332,13 +10332,13 @@ static void do_ssh2_authconn(Ssh ssh, const unsigned char *in, int inlen,
 			char *prompt;
 			int prompt_len;
 			int echo;
-			static char noprompt[] =
+			static const char noprompt[] =
 			    "<server failed to send prompt>: ";
 
 			ssh_pkt_getstring(pktin, &prompt, &prompt_len);
 			echo = ssh2_pkt_getbool(pktin);
 			if (!prompt_len) {
-			    prompt = noprompt;
+			    prompt = (char*) noprompt;
 			    prompt_len = lenof(noprompt)-1;
 			}
 			add_prompt(s->cur_prompt,

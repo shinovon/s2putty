@@ -4,7 +4,6 @@
 
 #include "putty.h"
 #include "ssh.h"
-#include <assert.h>
 
 /* Collect environmental noise every 5 minutes */
 #define NOISE_REGULAR_INTERVAL (5*60*TICKSPERSEC)
@@ -45,30 +44,9 @@ struct RandPool {
     int stir_pending;
 };
 
-int random_active = 0;
 
-#ifdef FUZZING
-/*
- * Special dummy version of the RNG for use when fuzzing.
- */
-void random_add_noise(void *noise, int length) { }
-void random_add_heavynoise(void *noise, int length) { }
-void random_ref(void) { }
-void random_unref(void) { }
-int random_byte(void)
-{
-    return 0x45; /* Chosen by eight fair coin tosses */
-}
-void random_get_savedata(void **data, int *len) { }
-#else /* !FUZZING */
-static struct RandPool pool;
-long next_noise_collection;
 
-#ifdef RANDOM_DIAGNOSTICS
-int random_diagnostics = 0;
-#endif
-
-static void random_stir(void)
+static void random_stir(struct RandPool *pool)
 {
     word32 block[HASHINPUT / sizeof(word32)];
     word32 digest[HASHSIZE / sizeof(word32)];
@@ -78,44 +56,20 @@ static void random_stir(void)
      * noise_get_light will call random_add_noise, which may call
      * back to here. Prevent recursive stirs.
      */
-    if (pool.stir_pending)
+    if (pool->stir_pending)
 	return;
-    pool.stir_pending = TRUE;
+    pool->stir_pending = TRUE;
 
     noise_get_light(random_add_noise);
 
-#ifdef RANDOM_DIAGNOSTICS
-    {
-        int p, q;
-        printf("random stir starting\npool:\n");
-        for (p = 0; p < POOLSIZE; p += HASHSIZE) {
-            printf("   ");
-            for (q = 0; q < HASHSIZE; q += 4) {
-                printf(" %08x", *(word32 *)(pool.pool + p + q));            
-            }
-            printf("\n");
-        }
-        printf("incoming:\n   ");
-        for (q = 0; q < HASHSIZE; q += 4) {
-            printf(" %08x", *(word32 *)(pool.incoming + q));
-        }
-        printf("\nincomingb:\n   ");
-        for (q = 0; q < HASHINPUT; q += 4) {
-            printf(" %08x", *(word32 *)(pool.incomingb + q));
-        }
-        printf("\n");
-        random_diagnostics++;
-    }
-#endif
-
-    SHATransform((word32 *) pool.incoming, (word32 *) pool.incomingb);
-    pool.incomingpos = 0;
+    SHATransform((word32 *) pool->incoming, (word32 *) pool->incomingb);
+    pool->incomingpos = 0;
 
     /*
      * Chunks of this code are blatantly endianness-dependent, but
      * as it's all random bits anyway, WHO CARES?
      */
-    memcpy(digest, pool.incoming, sizeof(digest));
+    memcpy(digest, pool->incoming, sizeof(digest));
 
     /*
      * Make two passes over the pool.
@@ -128,7 +82,7 @@ static void random_stir(void)
 	 * with the digest-so-far, so this shouldn't be Bad or
 	 * anything.
 	 */
-	memcpy(block, pool.pool, sizeof(block));
+	memcpy(block, pool->pool, sizeof(block));
 
 	/*
 	 * Each pass processes the pool backwards in blocks of
@@ -144,7 +98,7 @@ static void random_stir(void)
 	     */
 
 	    for (k = 0; k < sizeof(digest) / sizeof(*digest); k++)
-		digest[k] ^= ((word32 *) (pool.pool + j))[k];
+		digest[k] ^= ((word32 *) (pool->pool + j))[k];
 
 	    /*
 	     * Munge our unrevealed first block of the pool into
@@ -157,31 +111,8 @@ static void random_stir(void)
 	     */
 
 	    for (k = 0; k < sizeof(digest) / sizeof(*digest); k++)
-		((word32 *) (pool.pool + j))[k] = digest[k];
+		((word32 *) (pool->pool + j))[k] = digest[k];
 	}
-
-#ifdef RANDOM_DIAGNOSTICS
-        if (i == 0) {
-            int p, q;
-            printf("random stir midpoint\npool:\n");
-            for (p = 0; p < POOLSIZE; p += HASHSIZE) {
-                printf("   ");
-                for (q = 0; q < HASHSIZE; q += 4) {
-                    printf(" %08x", *(word32 *)(pool.pool + p + q));            
-                }
-                printf("\n");
-            }
-            printf("incoming:\n   ");
-            for (q = 0; q < HASHSIZE; q += 4) {
-                printf(" %08x", *(word32 *)(pool.incoming + q));
-            }
-            printf("\nincomingb:\n   ");
-            for (q = 0; q < HASHINPUT; q += 4) {
-                printf(" %08x", *(word32 *)(pool.incomingb + q));
-            }
-            printf("\n");
-        }
-#endif
     }
 
     /*
@@ -189,43 +120,20 @@ static void random_stir(void)
      * there'll be some extra bizarreness there.
      */
     SHATransform(digest, block);
-    memcpy(pool.incoming, digest, sizeof(digest));
+    memcpy(pool->incoming, digest, sizeof(digest));
 
-    pool.poolpos = sizeof(pool.incoming);
+    pool->poolpos = sizeof(pool->incoming);
 
-    pool.stir_pending = FALSE;
-
-#ifdef RANDOM_DIAGNOSTICS
-    {
-        int p, q;
-        printf("random stir done\npool:\n");
-        for (p = 0; p < POOLSIZE; p += HASHSIZE) {
-            printf("   ");
-            for (q = 0; q < HASHSIZE; q += 4) {
-                printf(" %08x", *(word32 *)(pool.pool + p + q));            
-            }
-            printf("\n");
-        }
-        printf("incoming:\n   ");
-        for (q = 0; q < HASHSIZE; q += 4) {
-            printf(" %08x", *(word32 *)(pool.incoming + q));
-        }
-        printf("\nincomingb:\n   ");
-        for (q = 0; q < HASHINPUT; q += 4) {
-            printf(" %08x", *(word32 *)(pool.incomingb + q));
-        }
-        printf("\n");
-        random_diagnostics--;
-    }
-#endif
+    pool->stir_pending = FALSE;
 }
 
 void random_add_noise(void *noise, int length)
 {
+    struct RandPool *pool = (struct RandPool*) statics()->random_pool;
     unsigned char *p = noise;
     int i;
 
-    if (!random_active)
+    if (!statics()->random_active)
 	return;
 
     /*
@@ -233,112 +141,139 @@ void random_add_noise(void *noise, int length)
      * bytes, so _if_ we were getting incredibly high entropy
      * sources then we would be throwing away valuable stuff.
      */
-    while (length >= (HASHINPUT - pool.incomingpos)) {
-	memcpy(pool.incomingb + pool.incomingpos, p,
-	       HASHINPUT - pool.incomingpos);
-	p += HASHINPUT - pool.incomingpos;
-	length -= HASHINPUT - pool.incomingpos;
-	SHATransform((word32 *) pool.incoming, (word32 *) pool.incomingb);
+    while (length >= (HASHINPUT - pool->incomingpos)) {
+	memcpy(pool->incomingb + pool->incomingpos, p,
+	       HASHINPUT - pool->incomingpos);
+	p += HASHINPUT - pool->incomingpos;
+	length -= HASHINPUT - pool->incomingpos;
+	SHATransform((word32 *) pool->incoming, (word32 *) pool->incomingb);
 	for (i = 0; i < HASHSIZE; i++) {
-	    pool.pool[pool.poolpos++] ^= pool.incoming[i];
-	    if (pool.poolpos >= POOLSIZE)
-		pool.poolpos = 0;
+	    pool->pool[pool->poolpos++] ^= pool->incomingb[i];
+	    if (pool->poolpos >= POOLSIZE)
+		pool->poolpos = 0;
 	}
-	if (pool.poolpos < HASHSIZE)
-	    random_stir();
+	if (pool->poolpos < HASHSIZE)
+	    random_stir(pool);
 
-	pool.incomingpos = 0;
+	pool->incomingpos = 0;
     }
 
-    memcpy(pool.incomingb + pool.incomingpos, p, length);
-    pool.incomingpos += length;
+    memcpy(pool->incomingb + pool->incomingpos, p, length);
+    pool->incomingpos += length;
 }
 
 void random_add_heavynoise(void *noise, int length)
 {
+    struct RandPool *pool = (struct RandPool*) statics()->random_pool;
     unsigned char *p = noise;
     int i;
 
     while (length >= POOLSIZE) {
 	for (i = 0; i < POOLSIZE; i++)
-	    pool.pool[i] ^= *p++;
-	random_stir();
+	    pool->pool[i] ^= *p++;
+	random_stir(pool);
 	length -= POOLSIZE;
     }
 
     for (i = 0; i < length; i++)
-	pool.pool[i] ^= *p++;
-    random_stir();
+	pool->pool[i] ^= *p++;
+    random_stir(pool);
 }
 
 static void random_add_heavynoise_bitbybit(void *noise, int length)
 {
+    struct RandPool *pool = (struct RandPool*) statics()->random_pool;
     unsigned char *p = noise;
     int i;
 
-    while (length >= POOLSIZE - pool.poolpos) {
-	for (i = 0; i < POOLSIZE - pool.poolpos; i++)
-	    pool.pool[pool.poolpos + i] ^= *p++;
-	random_stir();
-	length -= POOLSIZE - pool.poolpos;
-	pool.poolpos = 0;
+    while (length >= POOLSIZE - pool->poolpos) {
+	for (i = 0; i < POOLSIZE - pool->poolpos; i++)
+	    pool->pool[pool->poolpos + i] ^= *p++;
+	random_stir(pool);
+	length -= POOLSIZE - pool->poolpos;
+	pool->poolpos = 0;
     }
 
     for (i = 0; i < length; i++)
-	pool.pool[i] ^= *p++;
-    pool.poolpos = i;
+	pool->pool[i] ^= *p++;
+    pool->poolpos = i;
 }
 
-static void random_timer(void *ctx, unsigned long now)
+static void random_timer(void *ctx, long now)
 {
-    if (random_active > 0 && now == next_noise_collection) {
+    if (statics()->random_active > 0 && now - statics()->random_next_noise_collection >= 0) {
 	noise_regular();
-	next_noise_collection =
-	    schedule_timer(NOISE_REGULAR_INTERVAL, random_timer, &pool);
+	statics()->random_next_noise_collection =
+	    schedule_timer(NOISE_REGULAR_INTERVAL, random_timer, statics()->random_pool);
     }
 }
 
 void random_ref(void)
-{
-    if (!random_active) {
-	memset(&pool, 0, sizeof(pool));    /* just to start with */
-
+{    
+    if (!statics()->random_active) {
+        struct RandPool *pool = NULL;
+        pool = snew(struct RandPool);
+        statics()->random_pool = pool;
+        
+        memset(pool, 0, sizeof(struct RandPool)); /* just to start with */
+        
 	noise_get_heavy(random_add_heavynoise_bitbybit);
-	random_stir();
+	random_stir(pool);
 
-	next_noise_collection =
+	statics()->random_next_noise_collection =
 	    schedule_timer(NOISE_REGULAR_INTERVAL, random_timer, &pool);
     }
-    random_active++;
+    statics()->random_active++;
 }
 
 void random_unref(void)
 {
-    assert(random_active > 0);
-    if (random_active == 1) {
+    /* [Petteri] Ensure we save the seed before destroying the pool */
+    if ( statics()->random_active == 1 ) {
         random_save_seed();
-        expire_timer_context(&pool);
     }
-    random_active--;
+    statics()->random_active--;
+    if ( !statics()->random_active ) {
+        sfree(statics()->random_pool);
+        statics()->random_pool = NULL;        
+    }
 }
 
 int random_byte(void)
 {
-    assert(random_active);
+    struct RandPool *pool = (struct RandPool*) statics()->random_pool;
+    
+    if (pool->poolpos >= POOLSIZE)
+	random_stir(pool);
 
-    if (pool.poolpos >= POOLSIZE)
-	random_stir();
-
-    return pool.pool[pool.poolpos++];
+    return pool->pool[pool->poolpos++];
 }
 
 void random_get_savedata(void **data, int *len)
 {
+    struct RandPool *pool = (struct RandPool*) statics()->random_pool;
     void *buf = snewn(POOLSIZE / 2, char);
-    random_stir();
-    memcpy(buf, pool.pool + pool.poolpos, POOLSIZE / 2);
+    random_stir(pool);
+    memcpy(buf, pool->pool + pool->poolpos, POOLSIZE / 2);
     *len = POOLSIZE / 2;
     *data = buf;
-    random_stir();
+    random_stir(pool);
 }
-#endif
+
+void *random_pool(void)
+{
+    return statics()->random_pool;
+}
+
+// Faster version of random_byte(), used when the client can request a pointer
+// to the pool (using random_pool()) and cache it. In systems where static
+// variables are not supported, such as Symbian OS, getting a pointer to the
+// static pool can be time-consuming.
+int random_pool_byte(void *ppool)
+{
+    struct RandPool *pool = (struct RandPool*) ppool;
+
+    if ( pool->poolpos >= POOLSIZE )
+        random_stir(pool);
+    return pool->pool[pool->poolpos++];
+}

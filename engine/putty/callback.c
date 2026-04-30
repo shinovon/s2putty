@@ -7,6 +7,8 @@
 
 #include "putty.h"
 
+#if 0
+
 struct callback {
     struct callback *next;
 
@@ -72,3 +74,5 @@ int toplevel_callback_pending(void)
 {
     return cbhead != NULL;
 }
+
+#endif

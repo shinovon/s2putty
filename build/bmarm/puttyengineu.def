@@ -1,4 +1,16 @@
 EXPORTS
 ; NEW:
 	NewL__12CPuttyEngineP12MPuttyClientRC7TDesC16 @ 1 NONAME ; CPuttyEngine::NewL(MPuttyClient *, TDesC16 const &)
+	fontspec_new @ 2 NONAME R3UNUSED ; (null)
+	conf_get_filename @ 3 NONAME R3UNUSED ; (null)
+	conf_get_fontspec @ 4 NONAME R3UNUSED ; (null)
+	conf_get_int @ 5 NONAME R3UNUSED ; (null)
+	conf_get_int_int @ 6 NONAME R3UNUSED ; (null)
+	conf_get_str @ 7 NONAME R3UNUSED ; (null)
+	conf_set_filename @ 8 NONAME R3UNUSED ; (null)
+	conf_set_fontspec @ 9 NONAME R3UNUSED ; (null)
+	conf_set_int @ 10 NONAME R3UNUSED ; (null)
+	conf_set_int_int @ 11 NONAME ; (null)
+	conf_set_str @ 12 NONAME R3UNUSED ; (null)
+	filename_from_str @ 13 NONAME R3UNUSED ; (null)
 

@@ -16,7 +16,7 @@ int ec_generate(struct ec_key *key, int bits, progfn_t pfn,
                                        &key->signalg))
         return 0;
 
-    key->privateKey = bignum_random_in_range(One, key->publicKey.curve->w.n);
+    key->privateKey = bignum_random_in_range(One, key->publicKey.curve->u.w.n);
     if (!key->privateKey) return 0;
 
     publicKey = ec_public(key->privateKey, key->publicKey.curve);

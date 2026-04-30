@@ -66,7 +66,7 @@
 
 #define has_compat(x) ( ((CL_##x)&term->compatibility_level) != 0 )
 
-const char *EMPTY_WINDOW_TITLE = "";
+const char * const EMPTY_WINDOW_TITLE = "";
 
 const char sco2ansicolour[] = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
@@ -5862,6 +5862,7 @@ static void sel_spread(Terminal *term)
     }
 }
 
+#if 0
 static void term_paste_callback(void *vterm)
 {
     Terminal *term = (Terminal *)vterm;
@@ -5888,6 +5889,7 @@ static void term_paste_callback(void *vterm)
     term->paste_buffer = NULL;
     term->paste_len = 0;
 }
+#endif
 
 void term_do_paste(Terminal *term)
 {
@@ -5949,8 +5951,9 @@ void term_do_paste(Terminal *term)
         }
     }
     get_clip(term->frontend, NULL, NULL);
-
+#if 0
     queue_toplevel_callback(term_paste_callback, term);
+#endif
 }
 
 void term_mouse(Terminal *term, Mouse_Button braw, Mouse_Button bcooked,

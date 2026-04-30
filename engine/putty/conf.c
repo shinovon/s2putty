@@ -20,9 +20,9 @@ typedef enum { TYPE_NONE, TYPE_INT, TYPE_STR, TYPE_FILENAME, TYPE_FONT } Type;
  * given primary key id.
  */
 #define CONF_SUBKEYTYPE_DEF(valtype, keytype, keyword) TYPE_ ## keytype,
-static int subkeytypes[] = { CONFIG_OPTIONS(CONF_SUBKEYTYPE_DEF) };
+const static int subkeytypes[] = { CONFIG_OPTIONS(CONF_SUBKEYTYPE_DEF) };
 #define CONF_VALUETYPE_DEF(valtype, keytype, keyword) TYPE_ ## valtype,
-static int valuetypes[] = { CONFIG_OPTIONS(CONF_VALUETYPE_DEF) };
+const static int valuetypes[] = { CONFIG_OPTIONS(CONF_VALUETYPE_DEF) };
 
 /*
  * Configuration keys are primarily integers (big enum of all the

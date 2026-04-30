@@ -32,6 +32,7 @@
  * -- Petteri
 */
 #include "tree234.h"
+struct ec_curve;
 typedef struct statics_tag
 {
     void *frontend; /* frontend for fatalbox() and friends. */
@@ -50,6 +51,21 @@ typedef struct statics_tag
     int default_port;
     
     void *platform; /* platform-specific bits */
+    
+    struct ec_curve *ec_p256_curve;
+    unsigned char ec_p256_initialised;
+    
+    struct ec_curve *ec_p384_curve;
+    unsigned char ec_p384_initialised;
+    
+    struct ec_curve *ec_p521_curve;
+    unsigned char ec_p521_initialised;
+    
+    struct ec_curve *ec_curve25519_curve;
+    unsigned char ec_curve25519_initialised;
+    
+    struct ec_curve *ec_ed25519_curve;
+    unsigned char ec_ed25519_initialised;
 } Statics;
 
 #ifndef DONE_TYPEDEFS
@@ -509,7 +525,7 @@ struct backend_tag {
     int default_port;
 };
 
-extern const Backend *backends[];
+extern const Backend *const backends[];
 
 /*
  * Suggested default protocol provided by the backend link module.
@@ -1135,7 +1151,7 @@ extern Backend rlogin_backend;
  * Exports from telnet.c.
  */
 
-extern Backend telnet_backend;
+extern const Backend telnet_backend;
 
 /*
  * Exports from ssh.c.

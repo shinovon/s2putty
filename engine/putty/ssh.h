@@ -149,7 +149,7 @@ struct ec_curve {
         struct ec_wcurve w;
         struct ec_mcurve m;
         struct ec_ecurve e;
-    };
+    } u;
 };
 
 const struct ssh_signkey *ec_alg_by_oid(int len, const void *oid,
@@ -697,7 +697,7 @@ extern void base64_encode(FILE *fp, const unsigned char *data, int datalen,
                           int cpl);
 
 /* ssh2_load_userkey can return this as an error */
-extern struct ssh2_userkey ssh2_wrong_passphrase;
+extern const struct ssh2_userkey ssh2_wrong_passphrase;
 #define SSH2_WRONG_PASSPHRASE (&ssh2_wrong_passphrase)
 
 int ssh2_userkey_encrypted(const Filename *filename, char **comment);
