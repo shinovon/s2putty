@@ -49,6 +49,7 @@ static const TInt KLargeFontIndex = 1;
 static const int KCiphersBlowfish[CIPHER_MAX] = {
     CIPHER_BLOWFISH,
     CIPHER_AES,
+    CIPHER_CHACHA20,
     CIPHER_3DES,
     CIPHER_WARN,
     CIPHER_ARCFOUR,
@@ -58,6 +59,7 @@ static const int KCiphersBlowfish[CIPHER_MAX] = {
 // Cipher list when the user prefers AES (default)
 static const int KCiphersAes[CIPHER_MAX] = {
     CIPHER_AES,
+    CIPHER_CHACHA20,
     CIPHER_BLOWFISH,
     CIPHER_3DES,
     CIPHER_WARN,
@@ -71,6 +73,7 @@ static const int KCiphersAes[CIPHER_MAX] = {
 // FIXME: Move to a separate source module in the UI?
 static void StringToDes(const char *aStr, TDes &aTarget) {
     aTarget.SetLength(0);
+    if ( !aStr ) return;
     while ( *aStr ) {
         TChar c = *aStr++;
         if ( c > 0x7f ) {
@@ -81,19 +84,22 @@ static void StringToDes(const char *aStr, TDes &aTarget) {
 }
 
 // Converts a descriptor to a null-terminated C string.
-static void DesToString(const TDesC &aDes, char *aTarget, int targetLen) {
-    int i = 0;
+static char* DesToString(const TDesC &aDes) {
     int len = aDes.Length();
-    assert(len < (targetLen-1));
-    while ( i < len ) {
-        TChar c = aDes[i];
-        if ( c > 0x7f ) {
-            c = '?';
+    char *target = new char[len + 1];
+    if (target) {
+        int i = 0;
+        while ( i < len ) {
+            TChar c = aDes[i];
+            if ( c > 0x7f ) {
+                c = '?';
+            }
+            target[i] = (char) c;
+            i++;
         }
-        *aTarget++ = (char) c;
-        i++;
+        target[len] = 0;
     }
-    *aTarget = 0;
+    return target;
 }
 
 
@@ -129,24 +135,24 @@ void CSettingsDialog::PreLayoutDynInitL() {
     }
 
     // Hostname
-    StringToDes(iConfig->host, ptr);
+    StringToDes(conf_get_str(iConfig, CONF_host), ptr);
     ((CEikEdwin*)Control(ESettingsHost))->SetTextL(&ptr);
 
     // Port number
-    ((CEikNumberEditor*)Control(ESettingsPort))->SetNumber(iConfig->port);
+    ((CEikNumberEditor*)Control(ESettingsPort))->SetNumber(conf_get_int(iConfig, CONF_port));
 
     // SSH version
-    assert((iConfig->sshprot >= 0) && (iConfig->sshprot <= 3));
-    ((CEikChoiceList*)Control(ESettingsSshVersion))
-        ->SetCurrentItem(iConfig->sshprot);
+    int sshprot = conf_get_int(iConfig, CONF_sshprot);
+    assert((sshprot >= 0) && (sshprot <= 3));
+    ((CEikChoiceList*)Control(ESettingsSshVersion))->SetCurrentItem(sshprot);
 
     // Compression
     ((CEikCheckBox*)Control(ESettingsCompression))
-        ->SetState(iConfig->compression ?
+        ->SetState(conf_get_int(iConfig, CONF_compression) ?
                    CEikCheckBox::ESet : CEikCheckBox::EClear);
 
     // Cipher
-    if ( iConfig->ssh_cipherlist[0] == CIPHER_AES ) {
+    if ( conf_get_int_int(iConfig, CONF_ssh_cipherlist, 0) == CIPHER_AES ) {
         ((CEikChoiceList*)Control(ESettingsSshCipher))->SetCurrentItem(1);
     } else {
         ((CEikChoiceList*)Control(ESettingsSshCipher))->SetCurrentItem(0);
@@ -154,19 +160,19 @@ void CSettingsDialog::PreLayoutDynInitL() {
 
     // SSH Keepalive interval
     ((CEikNumberEditor*)Control(ESettingsKeepalive))
-        ->SetNumber(iConfig->ping_interval);
+        ->SetNumber(conf_get_int(iConfig, CONF_ping_interval));
 
     // Username
-    StringToDes(iConfig->username, ptr);
+    StringToDes(conf_get_str(iConfig, CONF_username), ptr);
     ((CEikEdwin*)Control(ESettingsUsername))->SetTextL(&ptr);
 
     // Private key file.
     // FIXME: This won't work with non-ASCII characters in the path!
-    StringToDes(iConfig->keyfile.path, ptr);
+    StringToDes(conf_get_filename(iConfig, CONF_keyfile)->path, ptr);
     ((CEikEdwin*)Control(ESettingsPrivateKey))->SetTextL(&ptr);
 
     // Font
-    TPtrC8 fontDes((const TUint8*)iConfig->font.name);
+    TPtrC8 fontDes((const TUint8*)conf_get_fontspec(iConfig, CONF_font)->name);
     TBool largeFont;
     CEikChoiceList *fontList = (CEikChoiceList*)Control(ESettingsFont);
     if ( fontDes.CompareF(KLargeFontName) == 0 ) {
@@ -179,14 +185,16 @@ void CSettingsDialog::PreLayoutDynInitL() {
 
     // Full screen
     CEikCheckBox::TState state = CEikCheckBox::EClear;
+    int cWidth = conf_get_int(iConfig, CONF_width);
+    int cHeight = conf_get_int(iConfig, CONF_height);
     if ( largeFont ) {
-        if ( (iConfig->width == KFullLargeWidth) &&
-             (iConfig->height == KFullLargeHeight) ) {
+        if ( (cWidth == KFullLargeWidth) &&
+             (cHeight == KFullLargeHeight) ) {
             state = CEikCheckBox::ESet;
         }
     } else {
-        if ( (iConfig->width == KFullSmallWidth) &&
-             (iConfig->height == KFullSmallHeight) ) {
+        if ( (cWidth == KFullSmallWidth) &&
+             (cHeight == KFullSmallHeight) ) {
             state = CEikCheckBox::ESet;
         }
     }
@@ -194,8 +202,7 @@ void CSettingsDialog::PreLayoutDynInitL() {
 
     // Palette
     iPalettes = CPalettes::NewL(R_PUTTY_PALETTE_NAMES, R_PUTTY_PALETTES);
-    TInt curpal = iPalettes->IdentifyPalette(
-        (const unsigned char*) iConfig->colours);
+    TInt curpal = iPalettes->IdentifyPalette(iConfig);
     CEikChoiceList *palList = ((CEikChoiceList*)Control(ESettingsPalette));
     CDesCArrayFlat *arr = new (ELeave) CDesCArrayFlat(iPalettes->NumPalettes());
     for ( TInt i = 0; i < iPalettes->NumPalettes(); i++ ) {
@@ -206,13 +213,13 @@ void CSettingsDialog::PreLayoutDynInitL() {
 
     // Backspace key
     ((CEikChoiceList*)Control(ESettingsBackspace))->SetCurrentItem(
-        iConfig->bksp_is_delete);
+        conf_get_int(iConfig, CONF_bksp_is_delete));
 
     // Character set
     // FIXME: This is the only thing we need the engine for -- consider another solution
     iCharSets = iPutty->SupportedCharacterSetsL();
     CEikChoiceList *csList = ((CEikChoiceList*)Control(ESettingsCharacterSet));
-    StringToDes(iConfig->line_codepage, ptr);
+    StringToDes(conf_get_str(iConfig, CONF_line_codepage), ptr);
     TInt curcs;
     if ( iCharSets->Find(ptr, curcs) != 0 ) {
         curcs = 0;
@@ -221,13 +228,13 @@ void CSettingsDialog::PreLayoutDynInitL() {
     csList->SetCurrentItem(curcs);
 
     // Logging type
-    assert((iConfig->logtype >= 0) && (iConfig->logtype <= 3));
-    ((CEikChoiceList*)Control(ESettingsLogType))
-        ->SetCurrentItem(iConfig->logtype);
+    int logtype = conf_get_int(iConfig, CONF_logtype);
+    assert((logtype >= 0) && (logtype <= 3));
+    ((CEikChoiceList*)Control(ESettingsLogType))->SetCurrentItem(logtype);
 
     // Log file
     // FIXME: This won't work with non-ASCII characters in the path!
-    StringToDes(iConfig->logfilename.path, ptr);
+    StringToDes(conf_get_filename(iConfig, CONF_logfilename)->path, ptr);
     ((CEikEdwin*)Control(ESettingsLogFile))->SetTextL(&ptr);
 
     CleanupStack::PopAndDestroy(); // buf
@@ -283,22 +290,23 @@ TBool CSettingsDialog::OkToExitL(TInt aButtonId) {
 
     // Hostname
     ((CEikEdwin*)Control(ESettingsHost))->GetText(ptr);
-    DesToString(ptr, iConfig->host, sizeof(iConfig->host));
+    char *tmpHost = DesToString(ptr);
+    conf_set_str(iConfig, CONF_host, tmpHost);
+    delete[] tmpHost;
 
     // Port number
-    iConfig->port = ((CEikNumberEditor*)Control(ESettingsPort))->Number();
+    conf_set_int(iConfig, CONF_port, ((CEikNumberEditor*)Control(ESettingsPort))->Number());
 
     // SSH version
-    iConfig->sshprot =
-        ((CEikChoiceList*)Control(ESettingsSshVersion))->CurrentItem();
-    assert((iConfig->sshprot >= 0) && (iConfig->sshprot <= 3));
+    int sshprot = ((CEikChoiceList*)Control(ESettingsSshVersion))->CurrentItem();
+    conf_set_int(iConfig, CONF_sshprot, sshprot);
+    assert((sshprot >= 0) && (sshprot <= 3));
 
     // Compression
-    if ( ((CEikCheckBox*)Control(ESettingsCompression))->State() ==
-         CEikCheckBox::ESet ) {
-        iConfig->compression = 1;
+    if ( ((CEikCheckBox*)Control(ESettingsCompression))->State() == CEikCheckBox::ESet ) {
+        conf_set_int(iConfig, CONF_compression, 1);
     } else {
-        iConfig->compression = 0;
+        conf_set_int(iConfig, CONF_compression, 0);
     }
 
     // Cipher
@@ -306,81 +314,86 @@ TBool CSettingsDialog::OkToExitL(TInt aButtonId) {
     if ( ((CEikChoiceList*)Control(ESettingsSshCipher))->CurrentItem() == 1 ) {
         ciphers = KCiphersAes;
     }
-    Mem::Copy(iConfig->ssh_cipherlist, ciphers, sizeof(int)*CIPHER_MAX);
+    for (int i = 0; i < CIPHER_MAX; i++) {
+        conf_set_int_int(iConfig, CONF_ssh_cipherlist, i, ciphers[i]);
+    }
 
     // SSH Keepalive interval
-    iConfig->ping_interval =
-        ((CEikNumberEditor*)Control(ESettingsKeepalive))->Number();
+    conf_set_int(iConfig, CONF_ping_interval, ((CEikNumberEditor*)Control(ESettingsKeepalive))->Number());
 
     // Username
     ((CEikEdwin*)Control(ESettingsUsername))->GetText(ptr);
-    DesToString(ptr, iConfig->username, sizeof(iConfig->username));
+    char *tmpUser = DesToString(ptr);
+    conf_set_str(iConfig, CONF_username, tmpUser);
+    delete[] tmpUser;
 
     // Private key file
     // FIXME: This won't work with non-ASCII characters in the path!
     ((CEikEdwin*)Control(ESettingsPrivateKey))->GetText(ptr);
-    DesToString(ptr, iConfig->keyfile.path, sizeof(iConfig->keyfile.path));
+    char *tmpKey = DesToString(ptr);
+    conf_set_filename(iConfig, CONF_keyfile, filename_from_str(tmpKey));
+    delete[] tmpKey;
 
     // Font
-    TPtr8 fontPtr((TUint8*)iConfig->font.name, sizeof(iConfig->font.name));
     TBool largeFont = EFalse;
+    const char *fontName = "small";
     switch ( ((CEikChoiceList*)Control(ESettingsFont))->CurrentItem() ) {
         case KSmallFontIndex:
-            fontPtr = KSmallFontName;
+            fontName = "small";
             break;
 
         case KLargeFontIndex:
-            fontPtr = KLargeFontName;
+            fontName = "large";
             largeFont = ETrue;
             break;
     }
-    fontPtr.Append('\0');
+    conf_set_fontspec(iConfig, CONF_font, fontspec_new(fontName));
 
     // Full screen
-    if ( ((CEikCheckBox*)Control(ESettingsFullScreen))->State() ==
-         CEikCheckBox::ESet ) {
+    if ( ((CEikCheckBox*)Control(ESettingsFullScreen))->State() == CEikCheckBox::ESet ) {
         if ( largeFont ) {
-            iConfig->width = KFullLargeWidth;
-            iConfig->height = KFullLargeHeight;
+            conf_set_int(iConfig, CONF_width, KFullLargeWidth);
+            conf_set_int(iConfig, CONF_height, KFullLargeHeight);
         } else {
-            iConfig->width = KFullSmallWidth;
-            iConfig->height = KFullSmallHeight;
+            conf_set_int(iConfig, CONF_width, KFullSmallWidth);
+            conf_set_int(iConfig, CONF_height, KFullSmallHeight);
         }
     } else {
         if ( largeFont ) {
-            iConfig->width = KNormalLargeWidth;
-            iConfig->height = KNormalLargeHeight;
+            conf_set_int(iConfig, CONF_width, KNormalLargeWidth);
+            conf_set_int(iConfig, CONF_height, KNormalLargeHeight);
         } else {
-            iConfig->width = KNormalSmallWidth;
-            iConfig->height = KNormalSmallHeight;
+            conf_set_int(iConfig, CONF_width, KNormalSmallWidth);
+            conf_set_int(iConfig, CONF_height, KNormalSmallHeight);
         }
     }
 
     // Palette
     CEikChoiceList *palList = ((CEikChoiceList*)Control(ESettingsPalette));
-    iPalettes->GetPalette(palList->CurrentItem(),
-                          (unsigned char*) iConfig->colours);
+    iPalettes->GetPalette(palList->CurrentItem(), iConfig);
     delete iPalettes;
     iPalettes = NULL;
 
     // Backspace key
-    iConfig->bksp_is_delete =
-        ((CEikChoiceList*)Control(ESettingsBackspace))->CurrentItem();
+    conf_set_int(iConfig, CONF_bksp_is_delete, ((CEikChoiceList*)Control(ESettingsBackspace))->CurrentItem());
 
     // Character set
     CEikChoiceList *csList = ((CEikChoiceList*)Control(ESettingsCharacterSet));
-    DesToString((*iCharSets)[csList->CurrentItem()], iConfig->line_codepage,
-                sizeof(iConfig->line_codepage));    
-    
+    char *tmpCs = DesToString((*iCharSets)[csList->CurrentItem()]);
+    conf_set_str(iConfig, CONF_line_codepage, tmpCs);
+    delete[] tmpCs;
+
     // Logging type
-    iConfig->logtype =
-        ((CEikChoiceList*)Control(ESettingsLogType))->CurrentItem();
-    assert((iConfig->logtype >= 0) && (iConfig->logtype <= 3));
+    int logtype = ((CEikChoiceList*)Control(ESettingsLogType))->CurrentItem();
+    conf_set_int(iConfig, CONF_logtype, logtype);
+    assert((logtype >= 0) && (logtype <= 3));
 
     // Log file
     // FIXME: This won't work with non-ASCII characters in the path!
     ((CEikEdwin*)Control(ESettingsLogFile))->GetText(ptr);
-    DesToString(ptr, iConfig->logfilename.path, sizeof(iConfig->logfilename.path));
+    char *tmpLog = DesToString(ptr);
+    conf_set_filename(iConfig, CONF_logfilename, filename_from_str(tmpLog));
+    delete[] tmpLog;
 
     CleanupStack::PopAndDestroy(); // buf
     

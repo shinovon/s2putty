@@ -200,14 +200,13 @@ void CPuttyAppUi::HandleCommandL(TInt aCommand) {
         // Palette change
         if ( iEngine ) {
             Config *cfg = iEngine->GetConfig();
-            iPalettes->GetPalette(aCommand - ECmdPaletteStart,
-                                  (unsigned char*) cfg->colours);
-            iAppView->SetDefaultColors(TRgb(cfg->colours[0][0],
-                                            cfg->colours[0][1],
-                                            cfg->colours[0][2]),
-                                       TRgb(cfg->colours[2][0],
-                                            cfg->colours[2][1],
-                                            cfg->colours[2][2]));
+            iPalettes->GetPalette(aCommand - ECmdPaletteStart, cfg);
+            iAppView->SetDefaultColors(TRgb(conf_get_int_int(cfg, CONF_colours, 0),
+											conf_get_int_int(cfg, CONF_colours, 1),
+											conf_get_int_int(cfg, CONF_colours, 2)),
+										TRgb(conf_get_int_int(cfg, CONF_colours, 6),
+											conf_get_int_int(cfg, CONF_colours, 7),
+											conf_get_int_int(cfg, CONF_colours, 8)));
             iEngine->ResetPalette();
             iEngine->RePaintWindow();
         }
@@ -476,7 +475,7 @@ void CPuttyAppUi::DynInitMenuPaneL(TInt aResourceId, CEikMenuPane *aMenuPane) {
             return;
         }        
         Config *cfg = iEngine->GetConfig();
-        TInt pal = iPalettes->IdentifyPalette((const unsigned char*) cfg->colours);
+        TInt pal = iPalettes->IdentifyPalette(cfg);
 
         // Add menu items for each available palette to the menu
         for ( TInt i = 0; i < iPalettes->NumPalettes(); i++ ) {
@@ -508,7 +507,7 @@ void CPuttyAppUi::DynInitMenuPaneL(TInt aResourceId, CEikMenuPane *aMenuPane) {
 // Reads the UI settings (font size, full screen flag) from a config structure
 void CPuttyAppUi::ReadUiSettingsL(Config *aConfig) {
 
-    TPtrC8 fontDes((const TUint8*)aConfig->font.name);
+    TPtrC8 fontDes((const TUint8*)conf_get_fontspec(aConfig, CONF_font)->name);
     if ( fontDes.CompareF(KLargeFontName) == 0 ) {
         iLargeFont = ETrue;
     } else {
@@ -517,15 +516,15 @@ void CPuttyAppUi::ReadUiSettingsL(Config *aConfig) {
     iAppView->SetFontL(iLargeFont);
 
     if ( iLargeFont ) {
-        if ( (aConfig->width == KFullLargeWidth) &&
-             (aConfig->height == KFullLargeHeight) ) {
+        if ( (conf_get_int(aConfig, CONF_width) == KFullLargeWidth) &&
+             (conf_get_int(aConfig, CONF_height) == KFullLargeHeight) ) {
             iFullScreen = ETrue;
         } else {
             iFullScreen = EFalse;
         }
     } else {
-        if ( (aConfig->width == KFullSmallWidth) &&
-             (aConfig->height == KFullSmallHeight) ) {
+        if ( (conf_get_int(aConfig, CONF_width)== KFullSmallWidth) &&
+             (conf_get_int(aConfig, CONF_height) == KFullSmallHeight) ) {
             iFullScreen = ETrue;
         } else {
             iFullScreen = EFalse;
@@ -533,12 +532,12 @@ void CPuttyAppUi::ReadUiSettingsL(Config *aConfig) {
     }
     iAppView->SetFullScreenL(iFullScreen);
 
-    iAppView->SetDefaultColors(TRgb(aConfig->colours[0][0],
-                                    aConfig->colours[0][1],
-                                    aConfig->colours[0][2]),
-                               TRgb(aConfig->colours[2][0],
-                                    aConfig->colours[2][1],
-                                    aConfig->colours[2][2]));
+    iAppView->SetDefaultColors(TRgb(conf_get_int_int(aConfig, CONF_colours, 0),
+									conf_get_int_int(aConfig, CONF_colours, 1),
+									conf_get_int_int(aConfig, CONF_colours, 2)),
+								TRgb(conf_get_int_int(aConfig, CONF_colours, 6),
+									conf_get_int_int(aConfig, CONF_colours, 7),
+									conf_get_int_int(aConfig, CONF_colours, 8)));
 }
 
 
@@ -604,9 +603,10 @@ void CPuttyAppUi::DoConnectToProfileL() {
         iEngine->ReadConfigFileL(selectedProfile);
         Config *cfg = iEngine->GetConfig();
         ReadUiSettingsL(cfg);
+        char *host = conf_get_str(cfg, CONF_host);
 
         // Prompt the user for the host if one isn't set in the profile
-        if ( cfg->host[0] == 0 ) {
+        if ( host[0] == 0 ) {
             TFileName hostName;
             CConnectionDialog *dlg = new (ELeave) CConnectionDialog(hostName);            
             if ( !dlg->ExecuteLD(R_CONNECTION_DIALOG) ) {
@@ -616,7 +616,7 @@ void CPuttyAppUi::DoConnectToProfileL() {
                 iConnectIdle->Start(TCallBack(ConnectToProfileCallback, (TAny*) this));
                 return;
             }
-            char *c = cfg->host;
+            char *c = host;
             for ( TInt i = 0; i < hostName.Length(); i++ ) {
                 *c++ = (char) hostName[i];
             }
