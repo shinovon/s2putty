@@ -6,21 +6,21 @@
 ;*
 ;* See license.txt for full copyright and license information.
 
-#{"PuTTY"},(0x101f9076),1,5,441,TYPE=SISAPP
+#{"PuTTY"},(0x101f9076),1,6,0,TYPE=SISAPP
 
 ; Compatibility: Series 80 2.0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 
 ; Signature
-*"c:\home\pekangas\keys\petteri_2008_2035.key","c:\home\pekangas\keys\petteri_2008_2035.cer"
+;*"c:\home\pekangas\keys\petteri_2008_2035.key","c:\home\pekangas\keys\petteri_2008_2035.cer"
 
 ; Installation note
 "installnote.txt"-"",FT,TC
 
 ; PuTTY UI application
-"..\..\..\epoc32\release\armi\urel\putty.app"-"!:\system\apps\putty\putty.app"
-"..\..\..\epoc32\data\z\system\apps\putty\putty.rsc"-"!:\system\apps\putty\putty.rsc"
-"..\..\..\epoc32\data\z\system\apps\putty\putty.aif"-"!:\system\apps\putty\putty.aif"
+"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\putty.app"-"!:\system\apps\putty\putty.app"
+"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.rsc"-"!:\system\apps\putty\putty.rsc"
+"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.aif"-"!:\system\apps\putty\putty.aif"
 
 ; Putty engine
-"..\..\..\epoc32\release\armi\urel\puttyengine.dll"-"!:\system\apps\putty\puttyengine.dll"
+"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\puttyengine.dll"-"!:\system\apps\putty\puttyengine.dll"
