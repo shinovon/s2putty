@@ -18,9 +18,9 @@
 "installnote.txt"-"",FT,TC
 
 ; PuTTY UI application
-"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\putty.app"-"!:\system\apps\putty\putty.app"
-"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.rsc"-"!:\system\apps\putty\putty.rsc"
-"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.aif"-"!:\system\apps\putty\putty.aif"
+"G:\Progs\Symbian\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\putty.app"-"!:\system\apps\putty\putty.app"
+"G:\Progs\Symbian\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.rsc"-"!:\system\apps\putty\putty.rsc"
+"G:\Progs\Symbian\S80_DP2_0_PP_SDK\epoc32\data\z\system\apps\putty\putty.aif"-"!:\system\apps\putty\putty.aif"
 
 ; Putty engine
-"F:\Progs\Symbian\7.0s\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\puttyengine.dll"-"!:\system\apps\putty\puttyengine.dll"
+"G:\Progs\Symbian\S80_DP2_0_PP_SDK\epoc32\release\armi\urel\puttyengine.dll"-"!:\system\apps\putty\puttyengine.dll"

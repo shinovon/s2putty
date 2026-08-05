@@ -1,0 +1,12 @@
+#ifdef EKA2
+#include "./s60v3/bld.inf"
+#else
+// #include "./s80v2/bld.inf"
+PRJ_PLATFORMS 
+wins armi
+
+PRJ_MMPFILES
+s80v2\puttyengine.mmp
+s80v2\puttyui.mmp
+common\configrecog.mmp
+#endif
