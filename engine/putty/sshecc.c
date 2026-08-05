@@ -64,6 +64,7 @@ static void initialise_wcurve(struct ec_curve *curve, int bits,
     curve->u.w.n = bignum_from_bytes(n, length);
     curve->u.w.G.x = bignum_from_bytes(Gx, length);
     curve->u.w.G.y = bignum_from_bytes(Gy, length);
+    curve->u.w.G.z = NULL;
     curve->u.w.G.curve = curve;
     curve->u.w.G.infinity = 0;
 }
@@ -113,6 +114,7 @@ static void initialise_ecurve(struct ec_curve *curve, int bits,
     /* Group order and generator */
     curve->u.e.B.x = bignum_from_bytes(Bx, length);
     curve->u.e.B.y = bignum_from_bytes(By, length);
+    curve->u.e.B.z = NULL;
     curve->u.e.B.curve = curve;
     curve->u.e.B.infinity = 0;
 }
