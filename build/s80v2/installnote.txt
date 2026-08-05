@@ -1,5 +1,5 @@
 PuTTY for Nokia 9300/9500 Communicators
-Version 1.6.0, 30 April 2026
+Version 1.6.1, 5 August 2026
 
 The PuTTY Symbian OS port is copyright 2002-2010 Petteri Kangaslampi.
 

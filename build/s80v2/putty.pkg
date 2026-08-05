@@ -6,7 +6,7 @@
 ;*
 ;* See license.txt for full copyright and license information.
 
-#{"PuTTY"},(0x101f9076),1,6,0,TYPE=SISAPP
+#{"PuTTY"},(0x101f9076),1,6,1,TYPE=SISAPP
 
 ; Compatibility: Series 80 2.0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
